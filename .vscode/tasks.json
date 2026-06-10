@@ -1,0 +1,56 @@
+{
+    // Build läuft über CMake (siehe kinect-input/CMakeLists.txt), NICHT über
+    // "build active file" - das Projekt besteht aus mehreren .cpp-Dateien,
+    // die gegen die Bibliothek kinect_core gelinkt werden.
+    //
+    // Alle Pfade sind absolut und jeder Task erzwingt cmd.exe als Shell,
+    // damit die Tasks auch bei unvollständigem Windows-PATH funktionieren.
+    "version": "2.0.0",
+    "options": {
+        "shell": {
+            "executable": "C:\\Windows\\System32\\cmd.exe",
+            "args": ["/d", "/c"]
+        },
+        "env": {
+            "PATH": "C:\\msys64\\ucrt64\\bin;C:\\Windows\\System32;${env:PATH}"
+        }
+    },
+    "tasks": [
+        {
+            "label": "CMake: configure (kinect-input, Debug)",
+            "type": "shell",
+            "command": "C:\\msys64\\ucrt64\\bin\\cmake.exe",
+            "args": [
+                "-S", "${workspaceFolder}\\kinect-input",
+                "-B", "${workspaceFolder}\\kinect-input\\build",
+                "-G", "Ninja",
+                "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "CMake: build (kinect-input)",
+            "type": "shell",
+            "command": "C:\\msys64\\ucrt64\\bin\\cmake.exe",
+            "args": ["--build", "${workspaceFolder}\\kinect-input\\build"],
+            "dependsOn": ["CMake: configure (kinect-input, Debug)"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "CTest: Tests ausführen",
+            "type": "shell",
+            "command": "C:\\msys64\\ucrt64\\bin\\ctest.exe",
+            "args": ["--test-dir", "${workspaceFolder}\\kinect-input\\build", "--output-on-failure"],
+            "dependsOn": ["CMake: build (kinect-input)"],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        }
+    ]
+}

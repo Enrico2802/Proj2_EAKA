@@ -1,0 +1,63 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "kinect-input (Mock, Dry-Run)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}\\kinect-input\\build\\kinect-input.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}\\kinect-input",
+            "MIMode": "gdb",
+            "miDebuggerPath": "C:\\msys64\\ucrt64\\bin\\gdb.exe",
+            "externalConsole": false,
+            "preLaunchTask": "CMake: build (kinect-input)",
+            "setupCommands": [
+                {
+                    "description": "Pretty-Printing für STL-Container (vector, string, ...)",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "kinect-input (manual, w/a/s/d)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}\\kinect-input\\build\\kinect-input.exe",
+            "args": ["--source", "manual"],
+            "cwd": "${workspaceFolder}\\kinect-input",
+            "MIMode": "gdb",
+            "miDebuggerPath": "C:\\msys64\\ucrt64\\bin\\gdb.exe",
+            // eigenes Konsolenfenster: _kbhit()/_getwch() brauchen eine echte Konsole mit Fokus
+            "externalConsole": true,
+            "preLaunchTask": "CMake: build (kinect-input)",
+            "setupCommands": [
+                {
+                    "description": "Pretty-Printing für STL-Container (vector, string, ...)",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Tests (test_gesture_detector)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}\\kinect-input\\build\\test_gesture_detector.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}\\kinect-input",
+            "MIMode": "gdb",
+            "miDebuggerPath": "C:\\msys64\\ucrt64\\bin\\gdb.exe",
+            "externalConsole": false,
+            "preLaunchTask": "CMake: build (kinect-input)",
+            "setupCommands": [
+                {
+                    "description": "Pretty-Printing für STL-Container (vector, string, ...)",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}

@@ -37,7 +37,13 @@
 *.out
 *.app
 
+# VS Code - Nutzer-spezifische Einstellungen nicht einchecken
+.vscode/settings.json
+
 # debug information files
 *.dwo
 __pycache__
 weiter-prompt.md
+
+# CMake-Build-Verzeichnis
+kinect-input/build/
