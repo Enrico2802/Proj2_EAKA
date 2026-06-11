@@ -69,3 +69,4 @@ Nächster Schritt: `libfreenect2` bauen, mit `Protonect` prüfen ob die Kinect
 Depth-Frames liefert (USB 3.0 direkt am Mainboard), dann `Freenect2Source`
 implementieren. `GestureDetector` und `KeySender` bleiben dabei unverändert.
 Details → [`kinect-input/README.md`](kinect-input/README.md).
+Testing
