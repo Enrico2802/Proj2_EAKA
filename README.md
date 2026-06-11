@@ -70,3 +70,18 @@ Depth-Frames liefert (USB 3.0 direkt am Mainboard), dann `Freenect2Source`
 implementieren. `GestureDetector` und `KeySender` bleiben dabei unverändert.
 Details → [`kinect-input/README.md`](kinect-input/README.md).
 Testing
+
+## Rust-Experiment
+
+Auf dem Branch `rust-input-experiment` gibt es zusaetzlich einen experimentellen
+Rust-Port in `kinect-input-rust/`. Portiert sind `GestureDetector`, Mock-/Manual-
+Source, `KeySender` und die 8 Unit-Tests. Die Kinect-Anbindung bleibt dort noch
+bewusst offen.
+
+```powershell
+cd kinect-input-rust
+cargo test
+cargo run
+cargo run -- --source manual
+cargo run -- --send
+```

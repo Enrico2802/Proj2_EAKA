@@ -47,3 +47,7 @@ weiter-prompt.md
 
 # CMake-Build-Verzeichnis
 kinect-input/build/
+
+# Rust-Build-Verzeichnis
+target/
+kinect-input-rust/target/
