@@ -34,6 +34,7 @@ python main.py --send           # ECHTE Tasten (3s Countdown, Notepad fokussiere
 python main.py --source manual  # w/a/s/d steuern, q = Ende
 python -m unittest -v           # 8 Unit-Tests
 ```
+TESTing
 
 ### C++-Port (`kinect-input/`)
 
