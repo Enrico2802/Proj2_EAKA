@@ -7,8 +7,11 @@ damit unabhaengig von der Rastergroesse (siehe KONZEPT Abs. 4.1).
 
 # --- Kamera / Bild ---
 CAMERA_INDEX        = 0      # OpenCV-Index (nicht die USB-VID/PID!). 0 = Standardkamera.
-FRAME_WIDTH         = 640
-FRAME_HEIGHT        = 480
+# FullHD laeuft mit ~30 FPS (Pipeline inkl. MOG2 gemessen). Voraussetzung ist das
+# MJPG-Format, das webcam_source.py erzwingt - sonst faellt die Cam auf YUY2 zurueck
+# (~5 FPS). Alternativen: 1280x720 (sparsam), 2560x1440 (~27 FPS).
+FRAME_WIDTH         = 1920
+FRAME_HEIGHT        = 1080
 MIRROR              = True   # Selfie-Ansicht: links im Bild = links der Person
 
 # --- Raster ---

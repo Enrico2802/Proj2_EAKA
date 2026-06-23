@@ -44,7 +44,9 @@ Flags: `--camera N`, `--grid 32x24`, `--enter 0.15`, `--exit 0.08`,
 `--show`/`--no-show`, `--mirror`/`--no-mirror`.
 
 Im Overlay-Fenster: `m` = Bild/Maske umschalten, `c` = neu kalibrieren,
-`q`/`ESC` = beenden (löst gehaltene Tasten als Not-Aus).
+`k` = **Send-Modus an/aus** (echte Tasten zur Laufzeit umschalten, ohne `--send`),
+`q`/`ESC` = beenden (löst gehaltene Tasten als Not-Aus). Der Send-Status wird
+oben rechts angezeigt (rot „SEND: AN" = echte Tasten feuern).
 
 ## Dateien
 

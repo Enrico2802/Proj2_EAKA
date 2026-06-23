@@ -42,7 +42,7 @@ class Overlay:
             return s.frame.copy()
         return np.zeros((config.FRAME_HEIGHT, config.FRAME_WIDTH, 3), np.uint8)
 
-    def show(self, s, detector, current_key, triggered_zone) -> str:
+    def show(self, s, detector, current_key, triggered_zone, send_active=False) -> str:
         img = self._base_image(s)
         h, w = img.shape[:2]
 
@@ -83,6 +83,15 @@ class Overlay:
             cv2.putText(img, label, (int(w * 0.30), 50),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.4, (0, 0, 255), 3, cv2.LINE_AA)
 
+        # --- SEND-Status oben rechts (deutlich) ---
+        if send_active:
+            txt, col = "SEND: AN", (0, 0, 255)
+        else:
+            txt, col = "SEND: AUS", (180, 180, 180)
+        (tw, _), _ = cv2.getTextSize(txt, cv2.FONT_HERSHEY_SIMPLEX, 0.9, 2)
+        cv2.putText(img, txt, (w - tw - 12, 36),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, col, 2, cv2.LINE_AA)
+
         # --- FPS ---
         now = time.monotonic()
         if self._last_t is not None:
@@ -95,7 +104,7 @@ class Overlay:
         status = (f"FPS {self._fps:4.1f} | Grid {config.GRID_COLS}x{config.GRID_ROWS} "
                   f"| enter {detector.enter_ratio:.2f} exit {detector.exit_ratio:.2f} "
                   f"| {'KALIBRIERT' if detector.calibrated else 'kalibriere...'} "
-                  f"| m=Maske c=Kalib q=Ende")
+                  f"| m=Maske c=Kalib k=Send q=Ende")
         cv2.putText(img, status, (6, h - 8),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
 
@@ -109,6 +118,8 @@ class Overlay:
             self.show_mask = not self.show_mask
         if key == ord("c"):
             return "c"
+        if key == ord("k"):
+            return "toggle_send"
         return ""
 
     def close(self):

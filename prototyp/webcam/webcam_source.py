@@ -28,8 +28,17 @@ class WebcamGridSource:
             self.cap = cv2.VideoCapture(self.camera_index)
         if not self.cap.isOpened():
             raise RuntimeError(f"Kamera {self.camera_index} konnte nicht geoeffnet werden.")
+        # WICHTIG fuer hohe Aufloesungen: MJPG erzwingen, sonst liefert die Cam
+        # unkomprimiertes YUY2 und die USB-Bandbreite drueckt die FPS auf ~5.
+        # FOURCC muss VOR UND NACH der Aufloesung gesetzt werden (Treiber-Quirk).
+        mjpg = cv2.VideoWriter_fourcc(*"MJPG")
+        self.cap.set(cv2.CAP_PROP_FOURCC, mjpg)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.FRAME_WIDTH)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.FRAME_HEIGHT)
+        self.cap.set(cv2.CAP_PROP_FOURCC, mjpg)
+        actual_w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        actual_h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        print(f"Kamera {self.camera_index}: {actual_w}x{actual_h}")
 
         self._kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
         self._make_subtractor()

@@ -105,3 +105,37 @@ class WinKeySender:
         for key in list(self._held):
             self._send(key, keyup=True)
         self._held.clear()
+
+
+class SwitchableKeySender:
+    """Sender, der zur Laufzeit zwischen Dry-Run und echtem Senden umschaltet.
+
+    So kann der Send-Modus im Overlay per Taste aktiviert werden, ohne das
+    Programm neu zu starten. Beim Ausschalten werden gehaltene ECHTE Tasten
+    sicher losgelassen (Not-Aus).
+    """
+
+    def __init__(self, send_enabled: bool = False):
+        self._win = WinKeySender()
+        self.send_enabled = send_enabled
+
+    def set_send(self, enabled: bool) -> None:
+        if self.send_enabled and not enabled:
+            self._win.release_all()   # echte gehaltene Tasten loslassen
+        self.send_enabled = enabled
+        print(f"      >> SEND-Modus {'AN (echte Tasten!)' if enabled else 'AUS (Dry-Run)'}")
+
+    def tap(self, key: str) -> None:
+        if self.send_enabled:
+            self._win.tap(key)
+        else:
+            print(f"      [DRY-RUN] TAP   {key}")
+
+    def hold(self, key: str, down: bool) -> None:
+        if self.send_enabled:
+            self._win.hold(key, down)
+        else:
+            print(f"      [DRY-RUN] HOLD  {key} down={down}")
+
+    def release_all(self) -> None:
+        self._win.release_all()

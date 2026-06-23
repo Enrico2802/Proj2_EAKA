@@ -13,7 +13,7 @@ import time
 
 import config
 from detector import GestureDetector
-from keysender import DryRunKeySender, WinKeySender
+from keysender import SwitchableKeySender
 from sources import MockSource, ManualSource
 import pipeline
 
@@ -41,7 +41,7 @@ def main() -> None:
         config.GRID_COLS, config.GRID_ROWS = _parse_grid(args.grid)
 
     detector = GestureDetector(enter_ratio=args.enter, exit_ratio=args.exit)
-    sender = WinKeySender() if args.send else DryRunKeySender()
+    sender = SwitchableKeySender(send_enabled=args.send)
 
     overlay = None
     if args.source == "webcam":

@@ -53,13 +53,17 @@ def run(source, detector, sender, overlay=None) -> None:
                 print(f"[{s.t:6.2f}s] {event}")
 
             if overlay is not None:
-                action = overlay.show(s, detector, current_key, triggered_zone)
+                send_active = getattr(sender, "send_enabled", False)
+                action = overlay.show(s, detector, current_key, triggered_zone,
+                                      send_active=send_active)
                 if action in ("q", "esc"):
                     break
                 elif action == "c":
                     detector.start_recalibration()
                     source.recalibrate()
                     print(">> Neu-Kalibrierung gestartet...")
+                elif action == "toggle_send" and hasattr(sender, "set_send"):
+                    sender.set_send(not sender.send_enabled)
     except KeyboardInterrupt:
         pass
     finally:
