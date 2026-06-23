@@ -1,0 +1,7 @@
+# Build-Umgebung fuer die opencv-Crate (MSYS2 UCRT64).
+# Damit findet der Bindgen-Schritt libclang und pkgconf die OpenCV-.pc-Datei,
+# ohne dass man die Variablen vor jedem `cargo build` exportieren muss.
+# Hinweis: Zum AUSFUEHREN muss C:\msys64\ucrt64\bin im PATH liegen (OpenCV-DLLs).
+[env]
+LIBCLANG_PATH = "C:\\msys64\\ucrt64\\bin"
+PKG_CONFIG_PATH = "C:\\msys64\\ucrt64\\lib\\pkgconfig"

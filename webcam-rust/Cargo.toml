@@ -1,0 +1,12 @@
+[package]
+name = "webcam-rust"
+version = "0.1.0"
+edition = "2021"
+description = "Webcam-Bewegungssteuerung -> Tastatur (Rust-Port des Python-Prototyps)"
+default-run = "webcam-rust"
+
+[dependencies]
+# highgui bewusst NICHT: dessen DLL ist gegen Qt6 gebaut und scheitert hier beim
+# Laden (Qt6 -> WinRT-API-Set wird nicht aufgeloest). Fenster/Tasten via minifb.
+opencv = { version = "0.98", default-features = false, features = ["videoio", "imgproc", "video"] }
+minifb = "0.27"
