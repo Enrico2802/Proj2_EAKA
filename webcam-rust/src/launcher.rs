@@ -5,7 +5,7 @@
 //! (nur Erkennung, Dry-Run) und "Abbrechen" (Programm beenden).
 
 use minifb::{Key as MKey, MouseButton, MouseMode, Window, WindowOptions};
-use opencv::core::{Mat, Point, Scalar};
+use opencv::core::{Mat, Point, Scalar, Size};
 use opencv::prelude::*;
 use opencv::imgproc;
 use opencv::videoio;
@@ -14,6 +14,10 @@ const FONT: i32 = imgproc::FONT_HERSHEY_SIMPLEX;
 const AA: i32 = imgproc::LINE_AA;
 const W: i32 = 500;
 const H: i32 = 420;
+/// Supersampling: intern wird SS-fach groesser gezeichnet und am Ende mit
+/// INTER_AREA heruntergefiltert -> glatte Schrift/Kanten statt pixeliger
+/// 1-Pixel-Hershey-Strokes.
+const SS: i32 = 3;
 /// Hoechster Kamera-Index, der beim Suchen probiert wird.
 const PROBE_MAX_INDEX: i32 = 4;
 
@@ -81,15 +85,40 @@ fn camera_row(i: usize) -> Btn {
     Btn { x: 20, y: 104 + i as i32 * 42, w: W - 40, h: 34 }
 }
 
+// Alle Zeichen-Helfer arbeiten in logischen Koordinaten (W x H) und skalieren
+// intern auf die SS-fache Zeichenflaeche.
+
 fn fill_rect(img: &mut Mat, r: Btn, color: Scalar, thickness: i32) -> opencv::Result<()> {
     imgproc::rectangle_points(
         img,
-        Point::new(r.x, r.y),
-        Point::new(r.x + r.w, r.y + r.h),
+        Point::new(r.x * SS, r.y * SS),
+        Point::new((r.x + r.w) * SS, (r.y + r.h) * SS),
         color,
-        thickness,
+        if thickness > 0 { thickness * SS } else { thickness },
         AA,
         0,
+    )
+}
+
+fn put(
+    img: &mut Mat,
+    txt: &str,
+    x: i32,
+    y: i32,
+    scale: f64,
+    color: Scalar,
+    thick: i32,
+) -> opencv::Result<()> {
+    imgproc::put_text(
+        img,
+        txt,
+        Point::new(x * SS, y * SS),
+        FONT,
+        scale * SS as f64,
+        color,
+        thick * SS,
+        AA,
+        false,
     )
 }
 
@@ -102,9 +131,12 @@ fn text_centered(
     thick: i32,
 ) -> opencv::Result<()> {
     let mut baseline = 0;
-    let ts = imgproc::get_text_size(txt, FONT, scale, thick, &mut baseline)?;
-    let org = Point::new(r.x + (r.w - ts.width) / 2, r.y + (r.h + ts.height) / 2);
-    imgproc::put_text(img, txt, org, FONT, scale, color, thick, AA, false)
+    let ts = imgproc::get_text_size(txt, FONT, scale * SS as f64, thick * SS, &mut baseline)?;
+    let org = Point::new(
+        r.x * SS + (r.w * SS - ts.width) / 2,
+        r.y * SS + (r.h * SS + ts.height) / 2,
+    );
+    imgproc::put_text(img, txt, org, FONT, scale * SS as f64, color, thick * SS, AA, false)
 }
 
 fn draw_button(
@@ -136,8 +168,8 @@ fn render(
     mouse: Option<(f32, f32)>,
 ) -> opencv::Result<Mat> {
     let mut img = Mat::new_rows_cols_with_default(
-        H,
-        W,
+        H * SS,
+        W * SS,
         opencv::core::CV_8UC3,
         Scalar::new(35.0, 35.0, 35.0, 0.0),
     )?;
@@ -145,8 +177,8 @@ fn render(
     let white = Scalar::new(255.0, 255.0, 255.0, 0.0);
     let gray = Scalar::new(200.0, 200.0, 200.0, 0.0);
 
-    imgproc::put_text(&mut img, "Webcam-Steuerung", Point::new(20, 38), FONT, 0.9, white, 2, AA, false)?;
-    imgproc::put_text(&mut img, "Quelle waehlen:", Point::new(20, 84), FONT, 0.6, gray, 1, AA, false)?;
+    put(&mut img, "Webcam-Steuerung", 20, 38, 0.9, white, 2)?;
+    put(&mut img, "Quelle waehlen:", 20, 84, 0.6, gray, 1)?;
     draw_button(
         &mut img,
         BTN_RESCAN,
@@ -157,17 +189,7 @@ fn render(
     )?;
 
     if cams.is_empty() {
-        imgproc::put_text(
-            &mut img,
-            "Keine Kamera gefunden.",
-            Point::new(24, 128),
-            FONT,
-            0.6,
-            Scalar::new(0.0, 0.0, 220.0, 0.0),
-            2,
-            AA,
-            false,
-        )?;
+        put(&mut img, "Keine Kamera gefunden.", 24, 128, 0.6, Scalar::new(0.0, 0.0, 220.0, 0.0), 2)?;
     }
     for (i, cam) in cams.iter().enumerate() {
         let r = camera_row(i);
@@ -188,20 +210,23 @@ fn render(
         fill_rect(&mut img, r, border, if is_sel { 2 } else { 1 })?;
         let marker = if is_sel { "(x)" } else { "( )" };
         let label = format!("{marker} Kamera {} - {}x{}", cam.index, cam.width, cam.height);
-        imgproc::put_text(&mut img, &label, Point::new(r.x + 10, r.y + 23), FONT, 0.55, white, 1, AA, false)?;
+        put(&mut img, &label, r.x + 10, r.y + 23, 0.55, white, 1)?;
     }
 
     let hint1 = "Real testen: Gesten senden echte Tasteneingaben (A/D/S/Leertaste).";
     let hint2 = "Demo: nur Erkennung + Overlay, keine Tasten. Esc = Abbrechen.";
-    imgproc::put_text(&mut img, hint1, Point::new(20, BTN_Y - 32), FONT, 0.42, gray, 1, AA, false)?;
-    imgproc::put_text(&mut img, hint2, Point::new(20, BTN_Y - 12), FONT, 0.42, gray, 1, AA, false)?;
+    put(&mut img, hint1, 20, BTN_Y - 32, 0.42, gray, 1)?;
+    put(&mut img, hint2, 20, BTN_Y - 12, 0.42, gray, 1)?;
 
     let has_cam = !cams.is_empty();
     draw_button(&mut img, BTN_REAL, "Real testen", Scalar::new(0.0, 120.0, 0.0, 0.0), has_cam, BTN_REAL.hit(mx, my))?;
     draw_button(&mut img, BTN_DEMO, "Demo", Scalar::new(150.0, 90.0, 20.0, 0.0), has_cam, BTN_DEMO.hit(mx, my))?;
     draw_button(&mut img, BTN_CANCEL, "Abbrechen", Scalar::new(50.0, 50.0, 140.0, 0.0), true, BTN_CANCEL.hit(mx, my))?;
 
-    Ok(img)
+    // Supersampling aufloesen: glatt auf Fenstergroesse herunterfiltern.
+    let mut out = Mat::default();
+    imgproc::resize(&img, &mut out, Size::new(W, H), 0.0, 0.0, imgproc::INTER_AREA)?;
+    Ok(out)
 }
 
 /// BGR-Mat -> u32-ARGB-Puffer fuer minifb (wie Overlay::blit).
