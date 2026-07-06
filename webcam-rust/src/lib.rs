@@ -7,6 +7,7 @@
 pub mod config;
 pub mod detector;
 pub mod keysender;
+pub mod launcher;
 pub mod overlay;
 pub mod pipeline;
 pub mod sources;

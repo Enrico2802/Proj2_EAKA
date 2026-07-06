@@ -1,9 +1,10 @@
 //! Webcam-Bewegungssteuerung -> Tastatur. CLI-Einstieg (Port von main.py).
 //!
-//!   cargo run                          # Mock-Drehbuch, Dry-Run
-//!   cargo run -- --source manual       # w/a/s/d steuern, q=Ende
-//!   cargo run -- --source webcam       # echte Kamera, Dry-Run + Overlay
-//!   cargo run -- --source webcam --send  # echte Kamera + ECHTE Tasten
+//!   cargo run                              # Start-GUI (Quellenauswahl) -> Webcam
+//!   cargo run -- --source webcam --no-gui  # Webcam direkt, ohne Start-GUI
+//!   cargo run -- --source mock             # Mock-Drehbuch, Dry-Run
+//!   cargo run -- --source manual           # w/a/s/d steuern, q=Ende
+//!   ... --send                             # echte Tasten (bei --no-gui/mock/manual)
 
 use std::thread;
 use std::time::Duration;
@@ -11,6 +12,7 @@ use std::time::Duration;
 use webcam_rust::config;
 use webcam_rust::detector::GestureDetector;
 use webcam_rust::keysender::KeySender;
+use webcam_rust::launcher;
 use webcam_rust::overlay::{Action, Overlay};
 use webcam_rust::pipeline;
 use webcam_rust::sources::{ManualSource, MockSource};
@@ -19,6 +21,7 @@ use webcam_rust::webcam_source::WebcamGridSource;
 struct Args {
     source: String,
     send: bool,
+    no_gui: bool,
     camera: i32,
     show: bool,
     mirror: bool,
@@ -28,8 +31,9 @@ struct Args {
 
 fn parse_args() -> Args {
     let mut a = Args {
-        source: "mock".into(),
+        source: "webcam".into(),
         send: false,
+        no_gui: false,
         camera: config::CAMERA_INDEX,
         show: true,
         mirror: config::MIRROR,
@@ -42,6 +46,7 @@ fn parse_args() -> Args {
         match argv[i].as_str() {
             "--source" => { i += 1; if i < argv.len() { a.source = argv[i].clone(); } }
             "--send" => a.send = true,
+            "--no-gui" => a.no_gui = true,
             "--camera" => { i += 1; if i < argv.len() { a.camera = argv[i].parse().unwrap_or(a.camera); } }
             "--no-show" => a.show = false,
             "--show" => a.show = true,
@@ -72,7 +77,26 @@ fn countdown() {
 }
 
 fn main() {
-    let args = parse_args();
+    let mut args = parse_args();
+
+    // Start-GUI vor dem Beweis-Screen: Quellenauswahl + Modus (Real/Demo).
+    if args.source == "webcam" && !args.no_gui {
+        match launcher::run_launcher(args.camera) {
+            Ok(Some(cfg)) => {
+                args.camera = cfg.camera;
+                args.send = cfg.send;
+            }
+            Ok(None) => {
+                println!("Abgebrochen.");
+                return;
+            }
+            Err(e) => {
+                eprintln!("Launcher-Fehler: {e}");
+                return;
+            }
+        }
+    }
+
     let mut detector = make_detector(&args);
     let mut sender = KeySender::new(args.send);
 
