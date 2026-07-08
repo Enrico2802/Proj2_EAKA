@@ -1,6 +1,6 @@
 # kinect-input-rust
 
-Rust-Experiment zum bestehenden C++-Input-Service.
+Rust-Experiment zur frueheren Kinect-Input-Pipeline.
 
 Der Port bildet dieselbe Pipeline ab:
 
@@ -45,19 +45,7 @@ q + Enter = Ende
 - Keine externen Rust-Crates: Der erste Build bleibt klein und offline-faehig.
 - Die Gestenlogik ist eine Library, damit `cargo test` sie direkt testet.
 - Der einzige `unsafe`-Block sitzt in `key_sender.rs`, wo die Win32-Funktionen `MapVirtualKeyW` und `SendInput` angebunden sind.
-- Die Kinect-Anbindung bleibt offen, weil `libfreenect2` C++-nah ist. Fuer einen echten Rust-Kinect-Port braucht man spaeter entweder Bindings, einen kleinen C++-Shim oder eine andere Kinect-API.
-
-## Vergleich zum C++-Port
-
-| C++ | Rust |
-| --- | --- |
-| `body_state.h` | `src/body_state.rs` |
-| `gesture_detector.h/.cpp` | `src/gesture_detector.rs` |
-| `key_sender.h/.cpp` | `src/key_sender.rs` |
-| `Source` Interface | `sources::Source` Trait |
-| `MockSource` | `sources::MockSource` |
-| `ManualSource` | `sources::ManualSource` |
-| `main.cpp` | `src/main.rs` |
+- Die Kinect-Anbindung bleibt offen. Fuer einen echten Rust-Kinect-Port braucht man spaeter entweder Bindings, einen kleinen nativen Wrapper oder eine andere Kinect-API.
 
 ## Naechste Schritte
 
