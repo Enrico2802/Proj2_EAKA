@@ -97,7 +97,7 @@ sequenceDiagram
         end
         Src-->>Ov: Frame + aktives Raster
         Det-->>Ov: kalibriert? · getriggerte Zone · Taste
-        Ov->>Ov: zeichnen; Tasten m / c / k / q
+        Ov->>Ov: Overlay zeichnen und Tasten m, c, k, q verarbeiten
     end
 ```
 
