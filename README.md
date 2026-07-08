@@ -10,7 +10,7 @@ Anbindung — es liest die Tasten wie von einer normalen Tastatur.
 > Skelett). Darum der Umstieg auf eine normale **Webcam** mit einem robusten
 > **Bewegungs-Raster-Ansatz** (Motion-Energy-Grid statt Skelett): kein ML-Modell
 > nötig, nur OpenCV + NumPy — und das Kamerabild ist gleichzeitig der
-> „Beweis-Screen" für die Ausstellung. Die alten Kinect-Varianten bleiben als
+> „Beweis-Screen" für die Ausstellung. Der alte Kinect-Prototyp bleibt als
 > Referenz erhalten (→ [Historie](#historie--legacy)).
 
 ## Funktionsprinzip
@@ -124,7 +124,7 @@ flowchart TD
 | --- | --- | --- | --- |
 | **Webcam – Python** (Referenz) | [`prototyp/webcam/`](prototyp/webcam/) | fertig, Live ok | Python 3, OpenCV, NumPy |
 | **Webcam – Rust** (Performance/Deploy) | [`webcam-rust/`](webcam-rust/) | fertig, Live-Test offen | Rust, opencv-Crate, minifb |
-| Kinect – Python/Rust | siehe [Historie](#historie--legacy) | eingefroren | — |
+| Kinect – Python | siehe [Historie](#historie--legacy) | eingefroren | — |
 
 Beide Webcam-Varianten teilen denselben Daten-Vertrag, dieselben anteiligen
 Schwellwerte und dieselben **9 Unit-Tests** der Detektor-Logik.
@@ -171,7 +171,6 @@ kalibrieren · **`k`** Send an/aus · **`q`**/`ESC` Ende (löst gehaltene Tasten
 prototyp/            # Kinect-Python-Prototyp (Legacy, BodyState-basiert)
 prototyp/webcam/     # AKTUELL: Webcam-Steuerung in Python
 webcam-rust/         # AKTUELL: Webcam-Steuerung in Rust
-kinect-input-rust/   # Legacy: Rust-Experiment der Kinect-Variante
 KONZEPT_Webcam_Steuerung*.txt   # Konzept + präziser Implementierungs-Bauplan
 ```
 
@@ -191,8 +190,7 @@ Frühere Kinect-v2-Variante (Skelett-Ersatz über Tiefen-Schwerpunkt + Körperh�
 Datenmodell `BodyState(x, height, t)`):
 
 - [`prototyp/`](prototyp/) — Python-Referenz (Sprung über Körperhöhe, Ducken=Strg).
-- [`kinect-input-rust/`](kinect-input-rust/) — Rust-Experiment.
 
-Diese sind eingefroren; die Kinect-Anbindung (`libfreenect2`) wurde zugunsten der
+Dieser Prototyp ist eingefroren; die Kinect-Anbindung (`libfreenect2`) wurde zugunsten der
 Webcam-Lösung nicht weiterverfolgt. Architektur-Notizen: [`plan.md`](plan.md),
 [`planv2.md`](planv2.md).
