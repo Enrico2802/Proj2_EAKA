@@ -5,12 +5,14 @@
 //!   cargo run -- --source mock             # Mock-Drehbuch, Dry-Run
 //!   cargo run -- --source manual           # w/a/s/d steuern, q=Ende
 //!   ... --send                             # echte Tasten (bei --no-gui/mock/manual)
+//!   ... --no-flow                          # Optical-Flow-Richtungs-Gate aus
+//!   ... --enter 0.2 / --exit 0.1           # Schwelle fuer ALLE Zonen ueberschreiben
 
 use std::thread;
 use std::time::Duration;
 
 use webcam_rust::config;
-use webcam_rust::detector::GestureDetector;
+use webcam_rust::detector::{Event, GestureDetector};
 use webcam_rust::keysender::KeySender;
 use webcam_rust::launcher;
 use webcam_rust::overlay::{Action, Overlay};
@@ -25,8 +27,11 @@ struct Args {
     camera: i32,
     show: bool,
     mirror: bool,
-    enter: f64,
-    exit: f64,
+    /// Ueberschreibt die Enter-Schwelle ALLER vier Zonen (None = Pro-Zone-
+    /// Werte aus config::ZONE_ENTER_RATIOS).
+    enter: Option<f64>,
+    exit: Option<f64>,
+    flow: bool,
 }
 
 fn parse_args() -> Args {
@@ -37,8 +42,9 @@ fn parse_args() -> Args {
         camera: config::CAMERA_INDEX,
         show: true,
         mirror: config::MIRROR,
-        enter: config::ZONE_ENTER_RATIO,
-        exit: config::ZONE_EXIT_RATIO,
+        enter: None,
+        exit: None,
+        flow: config::FLOW_ENABLED,
     };
     let argv: Vec<String> = std::env::args().skip(1).collect();
     let mut i = 0;
@@ -52,8 +58,9 @@ fn parse_args() -> Args {
             "--show" => a.show = true,
             "--no-mirror" => a.mirror = false,
             "--mirror" => a.mirror = true,
-            "--enter" => { i += 1; if i < argv.len() { a.enter = argv[i].parse().unwrap_or(a.enter); } }
-            "--exit" => { i += 1; if i < argv.len() { a.exit = argv[i].parse().unwrap_or(a.exit); } }
+            "--enter" => { i += 1; if i < argv.len() { a.enter = argv[i].parse().ok().or(a.enter); } }
+            "--exit" => { i += 1; if i < argv.len() { a.exit = argv[i].parse().ok().or(a.exit); } }
+            "--no-flow" => a.flow = false,
             other => eprintln!("Unbekanntes Argument: {other}"),
         }
         i += 1;
@@ -63,8 +70,12 @@ fn parse_args() -> Args {
 
 fn make_detector(a: &Args) -> GestureDetector {
     let mut cfg = config::detector_config();
-    cfg.enter_ratio = a.enter;
-    cfg.exit_ratio = a.exit;
+    if let Some(e) = a.enter {
+        cfg.enter_ratio = [e; 4];
+    }
+    if let Some(e) = a.exit {
+        cfg.exit_ratio = [e; 4];
+    }
     GestureDetector::new(cfg)
 }
 
@@ -158,6 +169,7 @@ fn run_webcam(args: &Args, detector: &mut GestureDetector, sender: &mut KeySende
         Ok(s) => s,
         Err(e) => { eprintln!("Kamera-Fehler: {e}"); return; }
     };
+    src.use_flow = args.flow;
     let mut overlay = if args.show {
         match Overlay::new() {
             Ok(o) => Some(o),
@@ -173,7 +185,20 @@ fn run_webcam(args: &Args, detector: &mut GestureDetector, sender: &mut KeySende
             Ok(None) => continue,
             Err(e) => { eprintln!("Frame-Fehler: {e}"); break; }
         };
-        let events = detector.update(s);
+        // Auto-Rekalibrierung der Quelle (Lichtwechsel) -> Detector-Baseline
+        // ebenfalls neu lernen; dieser Frame ist ohnehin unbrauchbar.
+        if src.want_recalib {
+            detector.start_recalibration();
+            sender.release_all();
+            println!(">> Neu-Kalibrierung gestartet (automatisch)...");
+            continue;
+        }
+        let mut events = detector.update(s);
+        // Waehrend eines mutmasslichen Szenenwechsels keine neuen Tasten
+        // ausloesen - nur ein gehaltenes S darf noch losgelassen werden.
+        if src.scene_suspect() {
+            events.retain(|e| *e == Event::HoldDownEnd);
+        }
         let (current_key, triggered) = handle_events(&events, sender, s.t);
 
         if let Some(ov) = overlay.as_mut() {

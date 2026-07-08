@@ -22,14 +22,26 @@ impl Zones {
 /// Ein Frame aus Sicht des Detectors: Zonen-Anteile + Zeitstempel (Sekunden).
 /// Bild/Maske fuer das Overlay werden im Webcam-Layer separat gefuehrt, damit
 /// dieser Typ frei von OpenCV bleibt.
+///
+/// `dir_ok` ist das Richtungs-Gate der Quelle fuer die Tap-Zonen
+/// [left, right, up]: true = Bewegung zeigt in Gestenrichtung (oder die
+/// Quelle liefert keine Richtungsinfo, dann bleibt das Gate offen). Die
+/// down-Zone hat bewusst kein Gate - Halten bedeutet Stillstand, Flow ~0.
 #[derive(Debug, Clone, Copy)]
 pub struct ZoneActivity {
     pub zones: Zones,
     pub t: f64,
+    pub dir_ok: [bool; 3],
 }
 
 impl ZoneActivity {
     pub fn new(zones: Zones, t: f64) -> Self {
-        Self { zones, t }
+        Self { zones, t, dir_ok: [true; 3] }
+    }
+
+    /// Variante fuer Quellen mit Richtungsinfo (Optical Flow).
+    pub fn with_dir_ok(mut self, dir_ok: [bool; 3]) -> Self {
+        self.dir_ok = dir_ok;
+        self
     }
 }

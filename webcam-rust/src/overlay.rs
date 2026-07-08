@@ -174,9 +174,11 @@ impl Overlay {
         }
         self.last_t = Some(now);
 
+        let e = config::ZONE_ENTER_RATIOS;
+        let x = config::ZONE_EXIT_RATIOS;
         let status = format!(
-            "FPS {:4.1} | Grid {}x{} | enter {:.2} exit {:.2} | {} | m=Maske c=Kalib k=Send q=Ende",
-            self.fps, cols, rows, config::ZONE_ENTER_RATIO, config::ZONE_EXIT_RATIO,
+            "FPS {:4.1} | Grid {}x{} | enter L{:.2} R{:.2} U{:.2} D{:.2} exit L{:.2} R{:.2} U{:.2} D{:.2} | {} | m=Maske c=Kalib k=Send q=Ende",
+            self.fps, cols, rows, e[0], e[1], e[2], e[3], x[0], x[1], x[2], x[3],
             if calibrated { "KALIBRIERT" } else { "kalibriere..." }
         );
         imgproc::put_text(&mut img, &status, Point::new(6, h - 8), FONT, 0.45,
