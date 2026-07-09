@@ -10,7 +10,7 @@ use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Key {
-    Space,
+    W,
     A,
     D,
     S,
@@ -19,7 +19,7 @@ pub enum Key {
 impl Key {
     pub fn as_str(self) -> &'static str {
         match self {
-            Key::Space => "space",
+            Key::W => "w",
             Key::A => "a",
             Key::D => "d",
             Key::S => "s",
@@ -105,8 +105,6 @@ mod platform {
     const KEYEVENTF_SCANCODE: u32 = 0x0008;
     const MAPVK_VK_TO_VSC: u32 = 0;
 
-    const VK_SPACE: u32 = 0x20;
-
     #[repr(C)]
     #[derive(Clone, Copy)]
     struct KeybdInput {
@@ -157,7 +155,7 @@ mod platform {
 
     fn vk_code(key: Key) -> u32 {
         match key {
-            Key::Space => VK_SPACE,
+            Key::W => b'W' as u32,
             Key::A => b'A' as u32,
             Key::D => b'D' as u32,
             Key::S => b'S' as u32,

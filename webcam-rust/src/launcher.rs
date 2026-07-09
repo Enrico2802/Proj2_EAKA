@@ -214,7 +214,7 @@ fn render(
         put(&mut img, &label, r.x + 10, r.y + 23, 0.55, white, 1)?;
     }
 
-    let hint1 = "Real testen: Gesten senden echte Tasteneingaben (A/D/S/Leertaste).";
+    let hint1 = "Real testen: Gesten senden echte Tasteneingaben (A/D/W/S).";
     let hint2 = "Demo: nur Erkennung + Overlay, keine Tasten. Esc = Abbrechen.";
     put(&mut img, hint1, 20, BTN_Y - 32, 0.42, gray, 1)?;
     put(&mut img, hint2, 20, BTN_Y - 12, 0.42, gray, 1)?;

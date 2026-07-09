@@ -1,14 +1,14 @@
 # Dokumentation: Entwicklungsprozess des Gestensteuerungs-Moduls
 
 **Projekt:** Proj2_EAKA — Körpersteuerung für ein Subway-Surfer-artiges Spiel
-**Finales Produkt:** `webcam-rust` (Version 1.1.2) — Webcam-basierte Gestensteuerung mit Tastatur-Emulation
+**Finales Produkt:** `webcam-rust` (Version 1.1.3) — Webcam-basierte Gestensteuerung mit Tastatur-Emulation
 **Zeitraum:** April – Juli 2026
 
 ---
 
 ## 1. Überblick
 
-Ziel des Moduls ist es, Körperbewegungen einer spielenden Person in Tastendrücke zu übersetzen (A / D / Leertaste / S). Das Spiel selbst muss dafür nicht angepasst werden — aus seiner Sicht tippt einfach jemand auf der Tastatur. Wer vor der Kamera nach links greift, nach rechts greift, die Arme hebt oder sich duckt, steuert damit die Spielfigur.
+Ziel des Moduls ist es, Körperbewegungen einer spielenden Person in Tastendrücke zu übersetzen (A / D / W / S). Das Spiel selbst muss dafür nicht angepasst werden — aus seiner Sicht tippt einfach jemand auf der Tastatur. Wer vor der Kamera nach links greift, nach rechts greift, die Arme hebt oder sich duckt, steuert damit die Spielfigur.
 
 Der Weg zum fertigen Produkt führte über fünf Entwicklungsstufen:
 
@@ -19,7 +19,7 @@ Der Weg zum fertigen Produkt führte über fünf Entwicklungsstufen:
 | 2 | Kinect-Port „Kinect++" | `kinect-input/` | C++ | entfernt (nur noch in der Projekthistorie) |
 | 3 | Kinect-Port | `kinect-input-rust/` | Rust | entfernt (nur noch in der Projekthistorie) |
 | 4 | **Kurswechsel:** Webcam-Prototyp | `prototyp/webcam/` | Python | als Referenz erhalten |
-| 5 | **Finales Produkt** | `webcam-rust/` | Rust | aktiv, Version 1.1.2 |
+| 5 | **Finales Produkt** | `webcam-rust/` | Rust | aktiv, Version 1.1.3 |
 
 Eine Grundidee zieht sich durch alle Stufen: die Verarbeitungskette **Quelle → Gestenerkennung → Tastensender**. Die *Quelle* liefert Bewegungsdaten (zuerst gedacht: Kinect-Sensor, am Ende: Webcam), die *Gestenerkennung* macht daraus Ereignisse wie „Sprung erkannt", und der *Tastensender* drückt die passende Taste. Weil diese drei Teile sauber getrennt sind, konnten Sensor und Programmiersprache mehrfach ausgetauscht werden, ohne jedes Mal bei null anzufangen. Außerdem ließ sich die Erkennungslogik in jeder Stufe automatisch testen — ganz ohne angeschlossene Hardware.
 
@@ -69,7 +69,7 @@ Das Webcam-Konzept wurde zuerst wieder in Python erprobt (`prototyp/webcam/`): K
 
 ---
 
-## 3. Finales Produkt: `webcam-rust` (Version 1.1.2)
+## 3. Finales Produkt: `webcam-rust` (Version 1.1.3)
 
 ### 3.1 Warum Rust — und was das Produkt ausmacht
 
@@ -97,7 +97,7 @@ Das Kamerabild ist in vier Zonen geteilt; die Bildmitte ist bewusst neutrale Ruh
 |------|-------|-------|-----------|
 | links | Arm nach links strecken | **A** | kurzer Tastendruck |
 | rechts | Arm nach rechts strecken | **D** | kurzer Tastendruck |
-| oben Mitte | Arme hochreißen | **Leertaste** (Sprung) | kurzer Tastendruck |
+| oben Mitte | Arme hochreißen | **W** (Sprung) | kurzer Tastendruck |
 | unteres Band | Ducken | **S** | Taste wird gehalten, solange geduckt |
 
 ### 3.4 Was bei jedem Kamerabild passiert
@@ -199,8 +199,8 @@ sequenceDiagram
     end
 ```
 
-GitHub-Release: https://github.com/Enrico2802/Proj2_EAKA/releases/tag/webcam-rust-v1.1.2
+GitHub-Release: https://github.com/Enrico2802/Proj2_EAKA/releases/tag/webcam-rust-v1.1.3
 
 ---
 
-*Stand: 09.07.2026 — erstellt aus dem aktuellen Projektstand (Version 1.1.2) und der Projekthistorie; die entfernten Kinect-Module wurden aus der Versionsverwaltung rekonstruiert.*
+*Stand: 09.07.2026 — erstellt aus dem aktuellen Projektstand (Version 1.1.3) und der Projekthistorie; die entfernten Kinect-Module wurden aus der Versionsverwaltung rekonstruiert.*

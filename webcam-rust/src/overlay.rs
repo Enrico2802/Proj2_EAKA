@@ -145,7 +145,7 @@ impl Overlay {
             let label = match k {
                 Key::A => "<- A",
                 Key::D => "D ->",
-                Key::Space => "[ SPRUNG ]",
+                Key::W => "^ W",
                 Key::S => "v S",
             };
             imgproc::put_text(&mut img, label, Point::new((w as f64 * 0.30) as i32, 50), FONT, 1.4,

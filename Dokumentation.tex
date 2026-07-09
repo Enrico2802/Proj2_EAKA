@@ -53,12 +53,12 @@
 \maketitle
 
 \textbf{Projekt:} Proj2\_EAKA -- Körpersteuerung für ein Subway-Surfer-artiges Spiel\\
-\textbf{Finales Produkt:} \code{webcam-rust} (Version 1.1.2) -- Webcam-basierte Gestensteuerung mit Tastatur-Emulation\\
+\textbf{Finales Produkt:} \code{webcam-rust} (Version 1.1.3) -- Webcam-basierte Gestensteuerung mit Tastatur-Emulation\\
 \textbf{Zeitraum:} April -- Juli 2026
 
 \section{Überblick}
 
-Ziel des Moduls ist es, Körperbewegungen einer spielenden Person in Tastendrücke zu übersetzen (A / D / Leertaste / S). Das Spiel selbst muss dafür nicht angepasst werden -- aus seiner Sicht tippt einfach jemand auf der Tastatur. Wer vor der Kamera nach links greift, nach rechts greift, die Arme hebt oder sich duckt, steuert damit die Spielfigur.
+Ziel des Moduls ist es, Körperbewegungen einer spielenden Person in Tastendrücke zu übersetzen (A / D / W / S). Das Spiel selbst muss dafür nicht angepasst werden -- aus seiner Sicht tippt einfach jemand auf der Tastatur. Wer vor der Kamera nach links greift, nach rechts greift, die Arme hebt oder sich duckt, steuert damit die Spielfigur.
 
 Der Weg zum fertigen Produkt führte über fünf Entwicklungsstufen:
 
@@ -71,7 +71,7 @@ Der Weg zum fertigen Produkt führte über fünf Entwicklungsstufen:
 2 & Kinect-Port ,,Kinect++`` & \code{kinect-input/} & C++ & entfernt (nur noch in der Projekthistorie) \\
 3 & Kinect-Port & \code{kinect-input-rust/} & Rust & entfernt (nur noch in der Projekthistorie) \\
 4 & \textbf{Kurswechsel:} Webcam-Prototyp & \code{prototyp/webcam/} & Python & als Referenz erhalten \\
-5 & \textbf{Finales Produkt} & \code{webcam-rust/} & Rust & aktiv, Version 1.1.2 \\
+5 & \textbf{Finales Produkt} & \code{webcam-rust/} & Rust & aktiv, Version 1.1.3 \\
 \bottomrule
 \end{tabularx}
 
@@ -123,7 +123,7 @@ Die Gesten wurden dabei ans Kamerabild angepasst: Springen heißt jetzt \textbf{
 
 Das Webcam-Konzept wurde zuerst wieder in Python erprobt (\code{prototyp/webcam/}): Kameraanbindung mit Hintergrundsubtraktion und Bewegungsraster, eine zonenbasierte Gestenerkennung mit denselben bewährten Schutzmechanismen (Selbstkalibrierung, Sperrzeit, Flacker-Puffer), ein zur Laufzeit ein- und ausschaltbarer Tastensender sowie das Overlay-Fenster mit Rasteranzeige und Sende-Status. Neun automatische Tests deckten die Erkennung ab -- ausdrücklich schon als Vorlage für die spätere Rust-Umsetzung geschrieben. Wichtigste Praxiserkenntnis: Die Kamera muss auf ein komprimiertes Bildformat eingestellt werden, sonst bricht die Bildrate drastisch ein; und die Hintergrundsubtraktion blendet Bewegung im Publikum hinter der spielenden Person zuverlässig aus.
 
-\section{Finales Produkt: \code{webcam-rust} (Version 1.1.2)}
+\section{Finales Produkt: \code{webcam-rust} (Version 1.1.3)}
 
 \subsection{Warum Rust -- und was das Produkt ausmacht}
 
@@ -157,7 +157,7 @@ Zone & Geste & Taste & Verhalten \\
 \midrule
 links & Arm nach links strecken & \textbf{A} & kurzer Tastendruck \\
 rechts & Arm nach rechts strecken & \textbf{D} & kurzer Tastendruck \\
-oben Mitte & Arme hochreißen & \textbf{Leertaste} (Sprung) & kurzer Tastendruck \\
+oben Mitte & Arme hochreißen & \textbf{W} (Sprung) & kurzer Tastendruck \\
 unteres Band & Ducken & \textbf{S} & Taste wird gehalten, solange geduckt \\
 \bottomrule
 \end{tabularx}
@@ -283,10 +283,10 @@ Das Diagramm zeigt den Ablauf des finalen Produkts in vier farblich markierten P
 }
 
 \smallskip
-\href{https://github.com/Enrico2802/Proj2_EAKA/releases/tag/webcam-rust-v1.1.2}{GitHub-Release: webcam-rust v1.1.2}
+\href{https://github.com/Enrico2802/Proj2_EAKA/releases/tag/webcam-rust-v1.1.3}{GitHub-Release: webcam-rust v1.1.3}
 \end{center}
 
 \vfill
-\emph{Stand: 09.07.2026 -- erstellt aus dem aktuellen Projektstand (Version 1.1.2) und der Projekthistorie; die entfernten Kinect-Module wurden aus der Versionsverwaltung rekonstruiert.}
+\emph{Stand: 09.07.2026 -- erstellt aus dem aktuellen Projektstand (Version 1.1.3) und der Projekthistorie; die entfernten Kinect-Module wurden aus der Versionsverwaltung rekonstruiert.}
 
 \end{document}

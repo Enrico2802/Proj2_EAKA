@@ -76,14 +76,14 @@ pub struct ZoneRect {
 pub const ZONE_RECTS: [ZoneRect; 4] = [
     ZoneRect { x0: 0.00, y0: 0.00, x1: 0.34, y1: 0.70 }, // left  -> A
     ZoneRect { x0: 0.66, y0: 0.00, x1: 1.00, y1: 0.70 }, // right -> D
-    ZoneRect { x0: 0.34, y0: 0.00, x1: 0.66, y1: 0.38 }, // up    -> Space
+    ZoneRect { x0: 0.34, y0: 0.00, x1: 0.66, y1: 0.38 }, // up    -> W
     ZoneRect { x0: 0.00, y0: 0.70, x1: 1.00, y1: 1.00 }, // down  -> S (Hold)
 ];
 
 /// Gesture -> key.
 pub const KEY_LEFT: Key = Key::A;
 pub const KEY_RIGHT: Key = Key::D;
-pub const KEY_UP: Key = Key::Space;
+pub const KEY_UP: Key = Key::W;
 pub const KEY_DOWN: Key = Key::S;
 
 pub fn detector_config() -> DetectorConfig {
