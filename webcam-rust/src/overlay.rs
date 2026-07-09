@@ -1,8 +1,8 @@
-//! Beweis-Screen / Overlay auf Monitor 2 (Port von overlay.py).
+//! Proof screen / overlay on monitor 2 (port of overlay.py).
 //!
-//! Gezeichnet wird mit OpenCV-imgproc auf den Frame; Fenster + Tasten laufen
-//! ueber minifb (reines Rust, kein Qt/highgui). Tasten: 'm' Bild/Maske,
-//! 'c' neu kalibrieren, 'k' Send an/aus, 'q'/ESC Ende.
+//! Drawing is done with OpenCV imgproc onto the frame; window + keys are
+//! handled by minifb (pure Rust, no Qt/highgui). Keys: 'm' image/mask,
+//! 'c' recalibrate, 'k' toggle send, 'q'/ESC quit.
 
 use std::time::Instant;
 
@@ -44,7 +44,6 @@ impl Overlay {
             WindowOptions { resize: true, ..WindowOptions::default() },
         )?;
         window.set_position(config::MONITOR2_X_OFFSET as isize, 0);
-        // ~60 FPS Begrenzung der Fenster-Updates
         window.set_target_fps(60);
         Ok(Self {
             window,
@@ -59,7 +58,7 @@ impl Overlay {
         self.window.is_open()
     }
 
-    /// Fenster wird beim Drop geschlossen; hier nur zur API-Symmetrie.
+    /// The window closes on drop; this exists only for API symmetry.
     pub fn close(&self) {}
 
     fn base_image(&self, frame: &Mat, active: &[bool]) -> opencv::Result<Mat> {
@@ -86,7 +85,6 @@ impl Overlay {
         }
     }
 
-    /// Zeichnet alles auf den Frame und gibt das fertige BGR-Bild zurueck.
     fn render(
         &mut self,
         frame: &Mat,
@@ -102,7 +100,7 @@ impl Overlay {
         let cols = config::GRID_COLS;
         let rows = config::GRID_ROWS;
 
-        // aktive Zellen halbtransparent
+        // active cells, semi-transparent
         let mut layer = img.try_clone()?;
         let cw = w as f64 / cols as f64;
         let ch = h as f64 / rows as f64;
@@ -119,7 +117,7 @@ impl Overlay {
         core::add_weighted(&layer, 0.35, &img, 0.65, 0.0, &mut blended, -1)?;
         img = blended;
 
-        // Rasterlinien
+        // grid lines
         let grid_col = Scalar::new(60.0, 60.0, 60.0, 0.0);
         for c in 1..cols {
             let x = c * w / cols;
@@ -130,7 +128,7 @@ impl Overlay {
             imgproc::line(&mut img, Point::new(0, y), Point::new(w, y), grid_col, 1, AA, 0)?;
         }
 
-        // Zonenrahmen + getriggerte Zone
+        // zone frames + triggered zone highlight
         let names = ["left", "right", "up", "down"];
         for (i, rect) in config::ZONE_RECTS.iter().enumerate() {
             let p0 = Point::new((rect.x0 * w as f64) as i32, (rect.y0 * h as f64) as i32);
@@ -142,7 +140,7 @@ impl Overlay {
             imgproc::put_text(&mut img, names[i], Point::new(p0.x + 4, p0.y + 18), FONT, 0.5, color, 1, AA, false)?;
         }
 
-        // grosse Tastenanzeige
+        // big key indicator
         if let Some(k) = current_key {
             let label = match k {
                 Key::A => "<- A",
@@ -154,7 +152,7 @@ impl Overlay {
                 Scalar::new(0.0, 0.0, 255.0, 0.0), 3, AA, false)?;
         }
 
-        // SEND-Status oben rechts
+        // SEND status, top right
         let (txt, col) = if send_active {
             ("SEND: AN", Scalar::new(0.0, 0.0, 255.0, 0.0))
         } else {
@@ -187,14 +185,14 @@ impl Overlay {
         Ok(img)
     }
 
-    /// BGR-Mat -> u32-ARGB-Puffer fuer minifb.
+    /// BGR Mat -> u32 ARGB buffer for minifb.
     fn blit(&mut self, img: &Mat) -> opencv::Result<(usize, usize)> {
         let w = img.cols() as usize;
         let h = img.rows() as usize;
         if self.buf.len() != w * h {
             self.buf.resize(w * h, 0);
         }
-        let bytes = img.data_bytes()?; // BGR, row-major (Mat ist continuous)
+        let bytes = img.data_bytes()?; // BGR, row-major (Mat is continuous)
         for i in 0..(w * h) {
             let b = bytes[3 * i] as u32;
             let g = bytes[3 * i + 1] as u32;

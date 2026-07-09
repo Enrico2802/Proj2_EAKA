@@ -1,13 +1,13 @@
-//! Mapping abstrakter Detector-Events auf konkrete Tastendruecke (Port von
-//! pipeline.py). Bewusst getrennt vom Detector, damit die Erkennungslogik
-//! tastenneutral bleibt.
+//! Maps abstract detector events to concrete key presses (port of
+//! pipeline.py). Deliberately separated from the detector so the detection
+//! logic stays key-agnostic.
 
 use crate::config;
 use crate::detector::Event;
 use crate::keysender::{Key, KeySender};
 
-/// Setzt ein Event in einen Tastendruck um. Gibt die Taste fuer die Anzeige
-/// zurueck (oder None, z.B. beim Loslassen).
+/// Turns an event into a key press. Returns the key for display purposes
+/// (or None, e.g. on release).
 pub fn dispatch(event: Event, sender: &mut KeySender) -> Option<Key> {
     match event {
         Event::TapLeft => {
@@ -33,7 +33,7 @@ pub fn dispatch(event: Event, sender: &mut KeySender) -> Option<Key> {
     }
 }
 
-/// Zone-Index (0..3) fuer die Overlay-Hervorhebung eines Events.
+/// Zone index (0..3) for highlighting an event in the overlay.
 pub fn event_zone(event: Event) -> Option<usize> {
     match event {
         Event::TapLeft => Some(0),

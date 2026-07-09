@@ -1,12 +1,12 @@
-//! Webcam-Bewegungssteuerung -> Tastatur. CLI-Einstieg (Port von main.py).
+//! Webcam motion control -> keyboard. CLI entry point (port of main.py).
 //!
-//!   cargo run                              # Start-GUI (Quellenauswahl) -> Webcam
-//!   cargo run -- --source webcam --no-gui  # Webcam direkt, ohne Start-GUI
-//!   cargo run -- --source mock             # Mock-Drehbuch, Dry-Run
-//!   cargo run -- --source manual           # w/a/s/d steuern, q=Ende
-//!   ... --send                             # echte Tasten (bei --no-gui/mock/manual)
-//!   ... --no-flow                          # Optical-Flow-Richtungs-Gate aus
-//!   ... --enter 0.2 / --exit 0.1           # Schwelle fuer ALLE Zonen ueberschreiben
+//!   cargo run                              # startup GUI (source selection) -> webcam
+//!   cargo run -- --source webcam --no-gui  # webcam directly, without startup GUI
+//!   cargo run -- --source mock             # scripted mock, dry run
+//!   cargo run -- --source manual           # control via w/a/s/d, q = quit
+//!   ... --send                             # real key presses (with --no-gui/mock/manual)
+//!   ... --no-flow                          # disable the optical-flow direction gate
+//!   ... --enter 0.2 / --exit 0.1           # override the threshold for ALL zones
 
 use std::thread;
 use std::time::Duration;
@@ -27,8 +27,8 @@ struct Args {
     camera: i32,
     show: bool,
     mirror: bool,
-    /// Ueberschreibt die Enter-Schwelle ALLER vier Zonen (None = Pro-Zone-
-    /// Werte aus config::ZONE_ENTER_RATIOS).
+    /// Overrides the enter threshold of ALL four zones (None = per-zone
+    /// values from config::ZONE_ENTER_RATIOS).
     enter: Option<f64>,
     exit: Option<f64>,
     flow: bool,
@@ -90,7 +90,7 @@ fn countdown() {
 fn main() {
     let mut args = parse_args();
 
-    // Start-GUI vor dem Beweis-Screen: Quellenauswahl + Modus (Real/Demo).
+    // Startup GUI before the proof screen: camera selection + mode (real/demo).
     if args.source == "webcam" && !args.no_gui {
         match launcher::run_launcher(args.camera) {
             Ok(Some(cfg)) => {
@@ -185,8 +185,8 @@ fn run_webcam(args: &Args, detector: &mut GestureDetector, sender: &mut KeySende
             Ok(None) => continue,
             Err(e) => { eprintln!("Frame-Fehler: {e}"); break; }
         };
-        // Auto-Rekalibrierung der Quelle (Lichtwechsel) -> Detector-Baseline
-        // ebenfalls neu lernen; dieser Frame ist ohnehin unbrauchbar.
+        // The source auto-recalibrated (lighting change) -> relearn the
+        // detector baseline as well; this frame is unusable anyway.
         if src.want_recalib {
             detector.start_recalibration();
             sender.release_all();
@@ -194,8 +194,8 @@ fn run_webcam(args: &Args, detector: &mut GestureDetector, sender: &mut KeySende
             continue;
         }
         let mut events = detector.update(s);
-        // Waehrend eines mutmasslichen Szenenwechsels keine neuen Tasten
-        // ausloesen - nur ein gehaltenes S darf noch losgelassen werden.
+        // During a suspected scene change do not trigger new keys - only
+        // releasing an already held S is still allowed.
         if src.scene_suspect() {
             events.retain(|e| *e == Event::HoldDownEnd);
         }

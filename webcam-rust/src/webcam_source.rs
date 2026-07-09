@@ -1,6 +1,6 @@
-//! Echte Quelle: Webcam -> MOG2-Maske -> Raster -> Zonen-Anteile (Port von
-//! webcam_source.py). Haelt zusaetzlich das letzte Bild + das aktive Raster
-//! fuer das Overlay vor.
+//! Real source: webcam -> MOG2 mask -> grid -> zone ratios (port of
+//! webcam_source.py). Additionally keeps the last frame + the active grid
+//! for the overlay.
 
 use std::time::Instant;
 
@@ -19,20 +19,20 @@ pub struct WebcamGridSource {
     kernel: Mat,
     mirror: bool,
     t0: Option<Instant>,
-    // MOG2-Warmup: danach wird das Hintergrundmodell eingefroren, damit eine
-    // still stehende / duckende Person nicht ins Modell absorbiert wird.
+    // MOG2 warmup: afterwards the background model is frozen so a person
+    // standing still / crouching is not absorbed into the model.
     frames_seen: u32,
-    // Szenenwechsel-Erkennung (globaler Lichtwechsel -> Auto-Rekalibrierung)
+    // Scene-change detection (global lighting change -> auto-recalibration)
     scene_high_count: u32,
-    pub global_ratio: f64,    // Anteil aktiver Zellen im GESAMTEN Raster
-    pub want_recalib: bool,   // true fuer genau einen Frame nach Auto-Rekalib
-    // Optical-Flow-Richtungs-Gate fuer die Tap-Zonen
+    pub global_ratio: f64,    // ratio of active cells across the WHOLE grid
+    pub want_recalib: bool,   // true for exactly one frame after auto-recalibration
+    // Optical-flow direction gate for the tap zones
     pub use_flow: bool,
-    prev_gray: Mat,           // letztes Graubild in FLOW_WIDTH x FLOW_HEIGHT
-    dir_recent: [u32; 3],     // Rest-Frames, in denen die Richtung noch gilt
-    // fuer das Overlay:
-    pub frame: Mat,           // letztes (ggf. gespiegeltes) BGR-Bild
-    pub active: Vec<bool>,    // aktives Raster, ROWS*COLS (row-major)
+    prev_gray: Mat,           // previous gray image at FLOW_WIDTH x FLOW_HEIGHT
+    dir_recent: [u32; 3],     // remaining frames the direction verdict stays valid
+    // for the overlay:
+    pub frame: Mat,           // last (possibly mirrored) BGR frame
+    pub active: Vec<bool>,    // active grid, ROWS*COLS (row-major)
 }
 
 impl WebcamGridSource {
@@ -47,7 +47,8 @@ impl WebcamGridSource {
                 format!("Kamera {camera_index} konnte nicht geoeffnet werden."),
             ));
         }
-        // MJPG erzwingen (vor UND nach der Aufloesung), sonst YUY2 -> ~5 FPS.
+        // Force MJPG (before AND after setting the resolution), otherwise
+        // the camera falls back to YUY2 -> ~5 FPS.
         let mjpg = videoio::VideoWriter::fourcc('M', 'J', 'P', 'G')?;
         cap.set(videoio::CAP_PROP_FOURCC, mjpg as f64)?;
         cap.set(videoio::CAP_PROP_FRAME_WIDTH, config::FRAME_WIDTH as f64)?;
@@ -90,9 +91,9 @@ impl WebcamGridSource {
         )
     }
 
-    /// Hintergrundmodell neu lernen (Licht/Standort hat sich geaendert).
-    /// Setzt auch den Warmup zurueck, damit das frische Modell erst schnell
-    /// lernt und dann wieder eingefroren wird.
+    /// Relearn the background model (lighting/position has changed).
+    /// Also resets the warmup so the fresh model first learns quickly and
+    /// is then frozen again.
     pub fn recalibrate(&mut self) {
         if let Ok(bs) = Self::make_subtractor() {
             self.backsub = bs;
@@ -101,8 +102,8 @@ impl WebcamGridSource {
         self.scene_high_count = 0;
     }
 
-    /// Sieht der aktuelle Frame nach globalem Szenenwechsel aus? Solange ja,
-    /// sollten keine Events an die Tastatur gehen (Fehl-Tap-Hagel).
+    /// Does the current frame look like a global scene change? While true,
+    /// no events should reach the keyboard (burst of false taps).
     pub fn scene_suspect(&self) -> bool {
         self.global_ratio > config::SCENE_CHANGE_RATIO
     }
@@ -131,7 +132,7 @@ impl WebcamGridSource {
         Zones::new(out[0], out[1], out[2], out[3])
     }
 
-    /// Naechster Frame. Gibt None nur bei echtem Kamera-Ende zurueck.
+    /// Next frame. Returns None only when the camera stream has really ended.
     pub fn next(&mut self) -> opencv::Result<Option<ZoneActivity>> {
         self.want_recalib = false;
 
@@ -144,7 +145,6 @@ impl WebcamGridSource {
         }
         let t = self.t0.unwrap().elapsed().as_secs_f64();
 
-        // spiegeln (Selfie-Ansicht)
         if self.mirror {
             let mut flipped = Mat::default();
             core::flip(&raw, &mut flipped, 1)?;
@@ -153,9 +153,9 @@ impl WebcamGridSource {
             self.frame = raw;
         }
 
-        // MOG2-Maske. Waehrend des Warmups automatisch lernen (-1.0), danach
-        // Modell einfrieren - sonst verschwindet eine still gehaltene Pose
-        // (Ducken!) nach ~10-25s aus der Maske und der Hold bricht ab.
+        // MOG2 mask. Learn automatically during warmup (-1.0), then freeze
+        // the model - otherwise a pose held still (crouching!) fades from
+        // the mask after ~10-25s and the hold aborts.
         let lr = if self.frames_seen < config::MOG2_WARMUP_FRAMES {
             -1.0
         } else {
@@ -164,15 +164,13 @@ impl WebcamGridSource {
         self.frames_seen = self.frames_seen.saturating_add(1);
         let mut fg = Mat::default();
         video::BackgroundSubtractorTrait::apply(&mut self.backsub, &self.frame, &mut fg, lr)?;
-        // Schatten (127) entfernen -> harter Vordergrund
+        // Drop shadows (value 127) -> hard foreground only.
         let mut bin = Mat::default();
         imgproc::threshold(&fg, &mut bin, 200.0, 255.0, imgproc::THRESH_BINARY)?;
-        // Morphologie: open dann close
         let mut opened = Mat::default();
         imgproc::morphology_ex_def(&bin, &mut opened, imgproc::MORPH_OPEN, &self.kernel)?;
         let mut closed = Mat::default();
         imgproc::morphology_ex_def(&opened, &mut closed, imgproc::MORPH_CLOSE, &self.kernel)?;
-        // auf Raster skalieren
         let mut small = Mat::default();
         imgproc::resize(
             &closed,
@@ -183,7 +181,6 @@ impl WebcamGridSource {
             imgproc::INTER_AREA,
         )?;
 
-        // aktive Zellen
         let mut act_total = 0u32;
         for row in 0..config::GRID_ROWS {
             for col in 0..config::GRID_COLS {
@@ -196,14 +193,15 @@ impl WebcamGridSource {
             }
         }
 
-        // Szenenwechsel-Erkennung: ist fast das ganze Raster laenger aktiv,
-        // war das Licht (oder die Kamera), keine Geste -> neu lernen.
+        // Scene-change detection: if almost the whole grid stays active for
+        // a while, it was the lighting (or the camera), not a gesture ->
+        // relearn the background.
         self.global_ratio =
             act_total as f64 / (config::GRID_COLS * config::GRID_ROWS) as f64;
         if self.global_ratio > config::SCENE_CHANGE_RATIO {
             self.scene_high_count += 1;
             if self.scene_high_count >= config::SCENE_CHANGE_FRAMES {
-                self.recalibrate(); // setzt scene_high_count zurueck
+                self.recalibrate(); // resets scene_high_count
                 self.want_recalib = true;
                 println!(">> Szenenwechsel erkannt (Licht?) - Hintergrund wird neu gelernt.");
             }
@@ -216,14 +214,14 @@ impl WebcamGridSource {
         Ok(Some(ZoneActivity::new(zones, t).with_dir_ok(dir_ok)))
     }
 
-    /// Optical-Flow-Richtungs-Gate fuer die Tap-Zonen [left, right, up].
+    /// Optical-flow direction gate for the tap zones [left, right, up].
     ///
-    /// Auf einem stark verkleinerten Graubild wird der mittlere Flussvektor
-    /// der Vordergrund-Pixel je Zone bestimmt. Nur wenn er in Gestenrichtung
-    /// zeigt (left: x negativ, right: x positiv, up: y negativ), oeffnet das
-    /// Gate - mit ein paar Frames Gedaechtnis, damit es am Umkehrpunkt der
-    /// Bewegung nicht flackert. Ohne Flow-Info (erster Frame, deaktiviert)
-    /// bleibt das Gate offen, damit keine Gesten verloren gehen.
+    /// On a strongly downscaled gray image the mean flow vector of the
+    /// foreground pixels is computed per zone. The gate only opens if it
+    /// points in gesture direction (left: x negative, right: x positive,
+    /// up: y negative) - with a few frames of memory so it does not flicker
+    /// at the turning point of the motion. Without flow info (first frame,
+    /// disabled) the gate stays open so no gestures are lost.
     fn update_flow_gate(&mut self, fg_mask: &Mat) -> opencv::Result<[bool; 3]> {
         let mut dir_ok = [true; 3];
         if !self.use_flow {
@@ -256,15 +254,15 @@ impl WebcamGridSource {
                 let flow_roi = Mat::roi(&flow, rect)?;
                 let mask_roi = Mat::roi(&mask_small, rect)?;
 
-                // Mittelwert nur ueber Vordergrund-Pixel; zu wenige Pixel =
-                // keine belastbare Richtung.
+                // Mean over foreground pixels only; too few pixels = no
+                // reliable direction.
                 let mut ok_now = false;
                 if core::count_non_zero(&mask_roi)? >= config::FLOW_MIN_PIXELS {
                     let m = core::mean(&flow_roi, &mask_roi)?; // [vx, vy, _, _]
                     ok_now = match i {
-                        0 => m[0] <= -config::FLOW_MIN_MAG, // left: nach aussen links
-                        1 => m[0] >= config::FLOW_MIN_MAG,  // right: nach aussen rechts
-                        _ => m[1] <= -config::FLOW_MIN_MAG, // up: aufwaerts
+                        0 => m[0] <= -config::FLOW_MIN_MAG, // left: outward left
+                        1 => m[0] >= config::FLOW_MIN_MAG,  // right: outward right
+                        _ => m[1] <= -config::FLOW_MIN_MAG, // up: upward
                     };
                 }
                 if ok_now {

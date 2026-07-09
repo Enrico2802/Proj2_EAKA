@@ -1,13 +1,13 @@
-"""Kinect-Steuerungs-Prototyp: Gesten -> Tastatur.
+"""Kinect control prototype: gestures -> keyboard.
 
-Pipeline (identisch zur Zielarchitektur aus plan.md):
+Pipeline (identical to the target architecture in plan.md):
 
-    Quelle (Mock / später Kinect)  ->  GestureDetector  ->  KeySender (SendInput)
+    source (mock / later Kinect)  ->  GestureDetector  ->  KeySender (SendInput)
 
-Beispiele:
-    python main.py                          # Mock-Drehbuch, nur Logging (Dry-Run)
-    python main.py --send                   # Mock-Drehbuch, sendet ECHTE Tasten (3s Zeit, Zielfenster zu fokussieren)
-    python main.py --source manual          # Person interaktiv per w/a/s/d steuern (Dry-Run)
+Examples:
+    python main.py                          # scripted mock, logging only (dry run)
+    python main.py --send                   # scripted mock, sends REAL keys (3s to focus the target window)
+    python main.py --source manual          # drive the person interactively via w/a/s/d (dry run)
 """
 
 import argparse
@@ -18,7 +18,7 @@ from key_sender import KeySender
 from sources.mock_source import MockSource
 from sources.manual_source import ManualSource
 
-# Mapping Geste -> Taste (muss zur Tastenbelegung des Spiels passen)
+# Gesture -> key mapping (must match the game's key bindings)
 ACTIONS = {
     "jump": ("tap", "space"),
     "lane_left": ("tap", "a"),
@@ -65,7 +65,7 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
     finally:
-        # Sicherheitsnetz: Ctrl nie gedrückt zurücklassen
+        # Safety net: never leave Ctrl held down
         sender.release("ctrl")
 
     print("\nFertig.")

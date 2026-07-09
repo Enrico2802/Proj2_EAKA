@@ -1,10 +1,10 @@
-//! Daten-Vertrag zwischen Quelle und Detector (Port von zones.py).
+//! Data contract between source and detector (port of zones.py).
 //!
-//! Eine Quelle liefert pro Frame die Bewegungs-ANTEILE je Zone (0.0..1.0).
-//! Der Detector liest ausschliesslich diese Werte + den Zeitstempel und ist
-//! damit ohne Kamera testbar.
+//! A source delivers the motion RATIOS per zone (0.0..1.0) for each frame.
+//! The detector reads only these values + the timestamp and is therefore
+//! testable without a camera.
 
-/// Anteil aktiver Zellen je Zone, jeweils 0.0..1.0.
+/// Ratio of active cells per zone, each 0.0..1.0.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Zones {
     pub left: f64,
@@ -19,14 +19,14 @@ impl Zones {
     }
 }
 
-/// Ein Frame aus Sicht des Detectors: Zonen-Anteile + Zeitstempel (Sekunden).
-/// Bild/Maske fuer das Overlay werden im Webcam-Layer separat gefuehrt, damit
-/// dieser Typ frei von OpenCV bleibt.
+/// One frame from the detector's point of view: zone ratios + timestamp
+/// (seconds). Image/mask for the overlay are kept separately in the webcam
+/// layer so this type stays free of OpenCV.
 ///
-/// `dir_ok` ist das Richtungs-Gate der Quelle fuer die Tap-Zonen
-/// [left, right, up]: true = Bewegung zeigt in Gestenrichtung (oder die
-/// Quelle liefert keine Richtungsinfo, dann bleibt das Gate offen). Die
-/// down-Zone hat bewusst kein Gate - Halten bedeutet Stillstand, Flow ~0.
+/// `dir_ok` is the source's direction gate for the tap zones
+/// [left, right, up]: true = motion points in gesture direction (or the
+/// source provides no direction info, then the gate stays open). The down
+/// zone deliberately has no gate - holding means standing still, flow ~0.
 #[derive(Debug, Clone, Copy)]
 pub struct ZoneActivity {
     pub zones: Zones,
@@ -39,7 +39,7 @@ impl ZoneActivity {
         Self { zones, t, dir_ok: [true; 3] }
     }
 
-    /// Variante fuer Quellen mit Richtungsinfo (Optical Flow).
+    /// Variant for sources with direction info (optical flow).
     pub fn with_dir_ok(mut self, dir_ok: [bool; 3]) -> Self {
         self.dir_ok = dir_ok;
         self

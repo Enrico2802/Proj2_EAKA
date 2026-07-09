@@ -1,11 +1,11 @@
-"""Echte Quelle: Webcam -> MOG2-Vordergrundmaske -> Raster -> Zonen-Anteile.
+"""Real source: webcam -> MOG2 foreground mask -> grid -> zone ratios.
 
-Verarbeitungskette pro Frame (KONZEPT Abs. 5):
-    Frame holen -> optional spiegeln -> MOG2-Maske -> Schatten weg -> Morphologie
-    -> auf GRID_COLS x GRID_ROWS skalieren -> aktive Zellen -> Anteil je Zone.
+Processing chain per frame (concept document, section 5):
+    grab frame -> optional mirror -> MOG2 mask -> remove shadows -> morphology
+    -> resize to GRID_COLS x GRID_ROWS -> active cells -> ratio per zone.
 
-Liefert dieselben ZoneActivity-Objekte wie Mock/Manual, zusaetzlich frame + grid
-fuer das Overlay.
+Delivers the same ZoneActivity objects as mock/manual, plus frame + grid
+for the overlay.
 """
 
 import time
@@ -24,13 +24,13 @@ class WebcamGridSource:
 
         self.cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
         if not self.cap.isOpened():
-            # Fallback ohne DSHOW-Backend
+            # fallback without the DSHOW backend
             self.cap = cv2.VideoCapture(self.camera_index)
         if not self.cap.isOpened():
             raise RuntimeError(f"Kamera {self.camera_index} konnte nicht geoeffnet werden.")
-        # WICHTIG fuer hohe Aufloesungen: MJPG erzwingen, sonst liefert die Cam
-        # unkomprimiertes YUY2 und die USB-Bandbreite drueckt die FPS auf ~5.
-        # FOURCC muss VOR UND NACH der Aufloesung gesetzt werden (Treiber-Quirk).
+        # IMPORTANT for high resolutions: force MJPG, otherwise the cam delivers
+        # uncompressed YUY2 and the USB bandwidth pushes the FPS down to ~5.
+        # FOURCC must be set BEFORE AND AFTER the resolution (driver quirk).
         mjpg = cv2.VideoWriter_fourcc(*"MJPG")
         self.cap.set(cv2.CAP_PROP_FOURCC, mjpg)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.FRAME_WIDTH)
@@ -52,7 +52,7 @@ class WebcamGridSource:
         )
 
     def recalibrate(self):
-        """Hintergrundmodell neu lernen (Licht/Standort hat sich geaendert)."""
+        """Relearn the background model (lighting/position has changed)."""
         self._make_subtractor()
 
     def _zone_ratios(self, active: np.ndarray) -> dict:
@@ -78,19 +78,15 @@ class WebcamGridSource:
             if self.mirror:
                 frame = cv2.flip(frame, 1)
 
-            # (4) MOG2-Vordergrundmaske
+            # Build a hard foreground mask from MOG2.
             fgmask = self.backsub.apply(frame)
-            # (5) Schatten (Wert 127) entfernen -> nur harter Vordergrund
             _, fgmask = cv2.threshold(fgmask, 200, 255, cv2.THRESH_BINARY)
-            # (6) Morphologie: Rauschen weg, Loecher zu
+            # Remove noise and close small holes.
             fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, self._kernel)
             fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_CLOSE, self._kernel)
-            # (7) Rasterung
             small = cv2.resize(fgmask, (config.GRID_COLS, config.GRID_ROWS),
                                interpolation=cv2.INTER_AREA)
-            # (8) aktive Zellen
             active = small >= config.CELL_ACTIVE_THRESH
-            # (9) Zonen-Anteile
             zones = self._zone_ratios(active)
 
             yield ZoneActivity(zones=zones, t=t, frame=frame, grid=active)

@@ -1,5 +1,5 @@
-//! Kamerafreie Quellen: Mock-Drehbuch und manuelle Tastatursteuerung
-//! (Port von sources.py). Beide liefern ZoneActivity wie die Webcam-Quelle.
+//! Camera-free sources: scripted mock and manual keyboard control
+//! (port of sources.py). Both deliver ZoneActivity like the webcam source.
 
 use std::thread;
 use std::time::Duration;
@@ -15,7 +15,7 @@ struct Segment {
     frames: usize,
 }
 
-/// Spielt ein festes Drehbuch von Zonen-Aktivitaeten ab.
+/// Plays back a fixed script of zone activities.
 pub struct MockSource {
     segs: Vec<Segment>,
     seg_i: usize,
@@ -69,8 +69,8 @@ impl MockSource {
     }
 }
 
-/// Manuelle Steuerung per Konsolentaste (w/a/d = oben/links/rechts, s = ducken
-/// an/aus, c = neu kalibrieren, q = Ende). Nicht-blockierend ueber die UCRT.
+/// Manual control via console keys (w/a/d = up/left/right, s = toggle crouch,
+/// c = recalibrate, q = quit). Non-blocking via the UCRT.
 pub struct ManualSource {
     t: f64,
     down: bool,
@@ -113,7 +113,7 @@ impl Default for ManualSource {
     }
 }
 
-/// Nicht-blockierende Konsoleneingabe ueber die C-Runtime (UCRT).
+/// Non-blocking console input via the C runtime (UCRT).
 mod console {
     #[cfg(windows)]
     extern "C" {

@@ -1,7 +1,7 @@
-"""Gemeinsames Datenmodell: der Körperzustand pro Frame.
+"""Shared data model: the body state per frame.
 
-Egal ob die Daten aus der Kinect (Depth-Frame -> Segmentierung -> Schwerpunkt)
-oder aus einer Simulation kommen - die Gestenerkennung sieht immer nur das hier.
+Whether the data comes from the Kinect (depth frame -> segmentation ->
+centroid) or from a simulation - gesture detection only ever sees this.
 """
 
 from dataclasses import dataclass
@@ -9,6 +9,6 @@ from dataclasses import dataclass
 
 @dataclass
 class BodyState:
-    x: float       # horizontaler Versatz der Person, normiert: -1.0 (ganz links) .. +1.0 (ganz rechts)
-    height: float  # Körperhöhe (höchster Punkt der Person), z.B. in Metern
-    t: float       # Zeitstempel in Sekunden
+    x: float       # horizontal offset of the person, normalized: -1.0 (far left) .. +1.0 (far right)
+    height: float  # body height (highest point of the person), e.g. in meters
+    t: float       # timestamp in seconds

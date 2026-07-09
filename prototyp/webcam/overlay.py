@@ -1,8 +1,8 @@
-"""Beweis-Screen / Overlay (KONZEPT Abs. 8) - ein OpenCV-Fenster auf Monitor 2.
+"""Proof screen / overlay (concept document, section 8) - an OpenCV window on monitor 2.
 
-Zeigt das Kamerabild ODER die Maske (Taste 'm'), das Raster, aktive Zellen,
-die Zonenrahmen, die gerade getriggerte Zone hervorgehoben und gross die
-aktuell gedrueckte Taste. Liefert pro Frame die gedrueckte Steuertaste zurueck.
+Shows the camera image OR the mask ('m' key), the grid, active cells, the
+zone frames, the currently triggered zone highlighted and the currently
+pressed key in large print. Returns the pressed control key per frame.
 """
 
 import time
@@ -14,7 +14,6 @@ import config
 
 WIN = "Webcam-Steuerung (Beweis-Screen)"
 
-# Anzeige-Text je Taste
 _KEY_LABEL = {
     config.KEYS["left"]:  "<- A",
     config.KEYS["right"]: "D ->",
@@ -33,7 +32,6 @@ class Overlay:
 
     def _base_image(self, s):
         if self.show_mask and s.grid is not None:
-            # aktive Zellen als graue Maske hochskalieren
             mask = (s.grid.astype(np.uint8) * 255)
             img = cv2.resize(mask, (config.FRAME_WIDTH, config.FRAME_HEIGHT),
                              interpolation=cv2.INTER_NEAREST)
@@ -46,7 +44,7 @@ class Overlay:
         img = self._base_image(s)
         h, w = img.shape[:2]
 
-        # --- aktive Zellen halbtransparent einfaerben ---
+        # Draw active cells as a semi-transparent layer.
         if s.grid is not None:
             overlay_layer = img.copy()
             rows, cols = s.grid.shape
@@ -58,7 +56,6 @@ class Overlay:
                 cv2.rectangle(overlay_layer, p0, p1, (0, 200, 255), -1)
             cv2.addWeighted(overlay_layer, 0.35, img, 0.65, 0, img)
 
-        # --- Raster-Linien ---
         for c in range(1, config.GRID_COLS):
             x = int(c * w / config.GRID_COLS)
             cv2.line(img, (x, 0), (x, h), (60, 60, 60), 1)
@@ -66,7 +63,6 @@ class Overlay:
             y = int(r * h / config.GRID_ROWS)
             cv2.line(img, (0, y), (w, y), (60, 60, 60), 1)
 
-        # --- Zonenrahmen + getriggerte Zone hervorheben ---
         for name, (x0, y0, x1, y1) in config.ZONES.items():
             p0 = (int(x0 * w), int(y0 * h))
             p1 = (int(x1 * w), int(y1 * h))
@@ -77,13 +73,11 @@ class Overlay:
             cv2.putText(img, name, (p0[0] + 4, p0[1] + 18),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
 
-        # --- grosse Tastenanzeige ---
         if current_key:
             label = _KEY_LABEL.get(current_key, current_key.upper())
             cv2.putText(img, label, (int(w * 0.30), 50),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.4, (0, 0, 255), 3, cv2.LINE_AA)
 
-        # --- SEND-Status oben rechts (deutlich) ---
         if send_active:
             txt, col = "SEND: AN", (0, 0, 255)
         else:
@@ -92,7 +86,6 @@ class Overlay:
         cv2.putText(img, txt, (w - tw - 12, 36),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.9, col, 2, cv2.LINE_AA)
 
-        # --- FPS ---
         now = time.monotonic()
         if self._last_t is not None:
             dt = now - self._last_t
@@ -100,7 +93,6 @@ class Overlay:
                 self._fps = 0.9 * self._fps + 0.1 * (1.0 / dt)
         self._last_t = now
 
-        # --- Statuszeile ---
         status = (f"FPS {self._fps:4.1f} | Grid {config.GRID_COLS}x{config.GRID_ROWS} "
                   f"| enter {detector.enter_ratio:.2f} exit {detector.exit_ratio:.2f} "
                   f"| {'KALIBRIERT' if detector.calibrated else 'kalibriere...'} "

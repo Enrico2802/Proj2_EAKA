@@ -1,9 +1,9 @@
-"""Datenquellen mit einheitlicher Schnittstelle.
+"""Data sources with a uniform interface.
 
-Jede Quelle ist iterierbar ueber frames() und liefert ZoneActivity-Objekte
-(Daten-Vertrag aus zones.py). MockSource und ManualSource brauchen keine Kamera
-und keine Zusatzpakete; WebcamGridSource (in webcam_source.py) liefert dieselben
-Objekte aus echten Kamerabildern.
+Each source is iterable via frames() and yields ZoneActivity objects (data
+contract from zones.py). MockSource and ManualSource need no camera and no
+extra packages; WebcamGridSource (in webcam_source.py) delivers the same
+objects from real camera images.
 """
 
 import math
@@ -16,10 +16,10 @@ DT = 1.0 / FPS
 
 
 class MockSource:
-    """Spielt ein festes Drehbuch von Zonen-Aktivitaeten ab (KONZEPT Abs. 4.2a)."""
+    """Plays back a fixed script of zone activities (concept document, section 4.2a)."""
 
     def __init__(self, realtime: bool = True):
-        self.realtime = realtime   # False = so schnell wie moeglich (Tests)
+        self.realtime = realtime   # False = as fast as possible (tests)
         self._t = 0.0
 
     def _frame(self, zones: dict) -> ZoneActivity:
@@ -62,9 +62,9 @@ class MockSource:
 
 
 class ManualSource:
-    """Person per Tastatur simulieren: a/d/w erzeugen Zonen-Aktivitaet, s toggelt
-    die Hold-Zone 'down'. q beendet. Tasten werden im Konsolenfenster gelesen
-    (msvcrt) - daher mit Dry-Run nutzen (KONZEPT Abs. 4.2b)."""
+    """Simulate a person via keyboard: a/d/w create zone activity, s toggles
+    the hold zone 'down'. q quits. Keys are read in the console window
+    (msvcrt) - therefore use with dry run (concept document, section 4.2b)."""
 
     def frames(self):
         import msvcrt

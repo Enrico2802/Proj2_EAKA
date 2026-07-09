@@ -1,8 +1,8 @@
-//! Tastatur-Emulation: zur Laufzeit umschaltbar zwischen Dry-Run und echtem
-//! Senden (Port von keysender.py / SwitchableKeySender).
+//! Keyboard emulation: switchable at runtime between dry run and real
+//! sending (port of keysender.py / SwitchableKeySender).
 //!
-//! Echtes Senden via Windows SendInput mit SCANCODES (rohes FFI, keine extra
-//! Crate), weil Spiele Scancodes zuverlaessiger lesen.
+//! Real sending uses Windows SendInput with SCANCODES (raw FFI, no extra
+//! crate) because games read scancodes more reliably.
 
 use std::fmt;
 use std::thread;
@@ -33,7 +33,6 @@ impl fmt::Display for Key {
     }
 }
 
-/// Sender, der zur Laufzeit zwischen Dry-Run und echtem Senden umschaltet.
 #[derive(Debug)]
 pub struct KeySender {
     send_enabled: bool,
@@ -51,7 +50,7 @@ impl KeySender {
 
     pub fn set_send(&mut self, enabled: bool) {
         if self.send_enabled && !enabled {
-            self.release_all(); // echte gehaltene Tasten loslassen
+            self.release_all(); // release real held keys before switching off
         }
         self.send_enabled = enabled;
         println!(
@@ -86,7 +85,7 @@ impl KeySender {
         }
     }
 
-    /// Not-Aus: alle aktuell gehaltenen echten Tasten loslassen.
+    /// Emergency stop: release all currently held real keys.
     pub fn release_all(&mut self) {
         for &key in &self.held {
             platform::send_key(key, true);

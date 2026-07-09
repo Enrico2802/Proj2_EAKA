@@ -1,8 +1,8 @@
-//! Webcam-Bewegungssteuerung -> Tastatur (Rust-Port).
+//! Webcam motion control -> keyboard (Rust port).
 //!
-//! Kamerafreie Kernlogik (testbar ohne Hardware). Die OpenCV-abhaengigen Teile
-//! (Webcam-Quelle, Overlay) liegen in eigenen Modulen und werden vom Binary
-//! eingebunden.
+//! Camera-free core logic (testable without hardware). The OpenCV-dependent
+//! parts (webcam source, overlay) live in separate modules and are wired up
+//! by the binary.
 
 pub mod config;
 pub mod detector;

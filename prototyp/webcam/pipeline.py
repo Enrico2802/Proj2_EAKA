@@ -1,15 +1,15 @@
-"""Verdrahtung: Quelle -> GestureDetector -> KeySender (+ optionales Overlay).
+"""Wiring: source -> GestureDetector -> KeySender (+ optional overlay).
 
-Das Mapping abstrakter Detector-Events auf konkrete Tasten passiert hier (nicht
-im Detector), damit die Erkennungslogik tastenneutral und testbar bleibt.
+The mapping of abstract detector events to concrete keys happens here (not
+in the detector) so the detection logic stays key-agnostic and testable.
 """
 
 import config
 
 
 def _dispatch(event: str, sender) -> str | None:
-    """Setzt ein Detector-Event in einen Tastendruck um. Gibt die Taste fuer die
-    Anzeige zurueck (oder None)."""
+    """Turns a detector event into a key press. Returns the key for display
+    purposes (or None)."""
     keys = config.KEYS
     if event == "tap_left":
         sender.tap(keys["left"]);   return keys["left"]
@@ -24,7 +24,7 @@ def _dispatch(event: str, sender) -> str | None:
     return None
 
 
-# Event -> Zone (fuer Overlay-Hervorhebung)
+# Overlay highlight mapping
 _EVENT_ZONE = {
     "tap_left": "left", "tap_right": "right", "tap_up": "up",
     "hold_down_start": "down",

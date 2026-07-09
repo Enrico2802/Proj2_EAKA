@@ -1,17 +1,17 @@
-"""Regelbasierte Gestenerkennung (plan.md, Option A).
+"""Rule-based gesture detection (plan.md, option A).
 
-Die Erkennung arbeitet rein auf BodyState-Werten (x-Versatz + Körperhöhe)
-und ist damit unabhängig davon, woher die Daten kommen (Kinect oder Mock).
+Detection works purely on BodyState values (x offset + body height) and is
+therefore independent of where the data comes from (Kinect or mock).
 
-Erkannte Events:
-    "jump"          - Körperhöhe steigt kurz über die Baseline
-    "crouch_start"  - Körperhöhe sinkt deutlich unter die Baseline
-    "crouch_end"    - Person steht wieder auf
-    "lane_left"     - Person macht einen Schritt nach links
-    "lane_right"    - Person macht einen Schritt nach rechts
+Detected events:
+    "jump"          - body height briefly rises above the baseline
+    "crouch_start"  - body height drops clearly below the baseline
+    "crouch_end"    - the person stands up again
+    "lane_left"     - the person takes a step to the left
+    "lane_right"    - the person takes a step to the right
 
-Beim Start kalibriert sich der Detektor selbst: die ersten Frames werden
-gemittelt und ergeben die "Ruheposition" (Baseline) der Person.
+On startup the detector calibrates itself: the first frames are averaged
+and yield the person's "idle position" (baseline).
 """
 
 from body_state import BodyState
@@ -20,12 +20,12 @@ from body_state import BodyState
 class GestureDetector:
     def __init__(
         self,
-        calib_frames: int = 30,    # Frames für die Start-Kalibrierung (~1s bei 30 FPS)
-        jump_thresh: float = 0.10,  # so viel muss die Höhe über die Baseline steigen (gleiche Einheit wie height)
-        crouch_thresh: float = 0.25,  # so viel muss die Höhe unter die Baseline sinken
-        lane_enter: float = 0.25,   # x-Versatz, ab dem eine Seitenspur betreten gilt
-        lane_exit: float = 0.15,    # x-Versatz, unter dem man wieder als "Mitte" gilt (Hysterese)
-        jump_cooldown: float = 0.5,  # Sekunden Sperrzeit, damit ein Sprung nicht mehrfach feuert
+        calib_frames: int = 30,    # frames for the startup calibration (~1s at 30 FPS)
+        jump_thresh: float = 0.10,  # how far the height must rise above the baseline (same unit as height)
+        crouch_thresh: float = 0.25,  # how far the height must drop below the baseline
+        lane_enter: float = 0.25,   # x offset at which a side lane counts as entered
+        lane_exit: float = 0.15,    # x offset below which one counts as "center" again (hysteresis)
+        jump_cooldown: float = 0.5,  # lockout in seconds so a jump does not fire multiple times
     ):
         self.calib_frames = calib_frames
         self.jump_thresh = jump_thresh
@@ -39,13 +39,13 @@ class GestureDetector:
         self.baseline_height = 0.0
         self.calibrated = False
 
-        self._lane = 0           # -1 = links, 0 = Mitte, +1 = rechts
+        self._lane = 0           # -1 = left, 0 = center, +1 = right
         self._airborne = False
         self._crouching = False
         self._last_jump_t = -1e9
 
     def update(self, s: BodyState) -> list[str]:
-        """Verarbeitet einen Frame und liefert die in diesem Frame erkannten Events."""
+        """Processes one frame and returns the events detected in this frame."""
         if not self.calibrated:
             self._calib_buffer.append(s)
             if len(self._calib_buffer) >= self.calib_frames:
@@ -60,16 +60,16 @@ class GestureDetector:
         rel_x = s.x - self.baseline_x
         rel_h = s.height - self.baseline_height
 
-        # --- Springen: steigende Flanke der Körperhöhe + Cooldown ---
+        # Jump detection with cooldown.
         if not self._airborne and rel_h > self.jump_thresh:
             if s.t - self._last_jump_t >= self.jump_cooldown:
                 events.append("jump")
                 self._last_jump_t = s.t
             self._airborne = True
         elif self._airborne and rel_h < self.jump_thresh * 0.5:
-            self._airborne = False  # gelandet
+            self._airborne = False
 
-        # --- Ducken: zustandsbasiert mit Hysterese (Taste wird gehalten) ---
+        # Crouch detection with hysteresis.
         if not self._crouching and rel_h < -self.crouch_thresh:
             self._crouching = True
             events.append("crouch_start")
@@ -77,7 +77,7 @@ class GestureDetector:
             self._crouching = False
             events.append("crouch_end")
 
-        # --- Spurwechsel: physische Position -> Spur, mit Hysterese ---
+        # Lane changes use hysteresis to avoid flicker near the center.
         target_lane = self._lane
         if self._lane == 0:
             if rel_x < -self.lane_enter:

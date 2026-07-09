@@ -1,8 +1,9 @@
-//! Start-GUI vor dem Beweis-Screen (minifb + OpenCV-Zeichnen, kein Qt/highgui).
+//! Startup GUI shown before the proof screen (minifb + OpenCV drawing, no
+//! Qt/highgui).
 //!
-//! Listet verfuegbare Kameras (Index-Probe via DirectShow) zur Quellenauswahl
-//! und bietet drei Aktionen: "Real testen" (echte Tasteneingaben), "Demo"
-//! (nur Erkennung, Dry-Run) und "Abbrechen" (Programm beenden).
+//! Lists available cameras (index probing via DirectShow) for source
+//! selection and offers three actions: "Real testen" (real key input),
+//! "Demo" (detection only, dry run) and "Abbrechen" (quit).
 
 use minifb::{Key as MKey, MouseButton, MouseMode, Window, WindowOptions};
 use opencv::core::{Mat, Point, Scalar, Size};
@@ -14,11 +15,11 @@ const FONT: i32 = imgproc::FONT_HERSHEY_SIMPLEX;
 const AA: i32 = imgproc::LINE_AA;
 const W: i32 = 500;
 const H: i32 = 420;
-/// Supersampling: intern wird SS-fach groesser gezeichnet und am Ende mit
-/// INTER_AREA heruntergefiltert -> glatte Schrift/Kanten statt pixeliger
-/// 1-Pixel-Hershey-Strokes.
+/// Supersampling: drawing happens SS times larger internally and is filtered
+/// down with INTER_AREA at the end -> smooth text/edges instead of pixelated
+/// 1-pixel Hershey strokes.
 const SS: i32 = 3;
-/// Hoechster Kamera-Index, der beim Suchen probiert wird.
+/// Highest camera index probed during scanning.
 const PROBE_MAX_INDEX: i32 = 4;
 
 #[derive(Debug, Clone, Copy)]
@@ -28,17 +29,17 @@ pub struct CameraInfo {
     pub height: i32,
 }
 
-/// Ergebnis der Start-GUI: gewaehlte Kamera + ob echte Tasten gesendet werden.
+/// Result of the startup GUI: chosen camera + whether real keys are sent.
 #[derive(Debug, Clone, Copy)]
 pub struct LaunchConfig {
     pub camera: i32,
     pub send: bool,
 }
 
-/// Probiert Kamera-Indizes 0..=PROBE_MAX_INDEX und liefert die gefundenen
-/// Kameras mit Standard-Aufloesung. Erst DirectShow, dann CAP_ANY --
-/// dieselbe Fallback-Reihenfolge wie WebcamGridSource (die MSYS2-OpenCV-Build
-/// kann DSHOW teils nicht per Index oeffnen).
+/// Probes camera indices 0..=PROBE_MAX_INDEX and returns the cameras found
+/// with their default resolution. DirectShow first, then CAP_ANY -- the same
+/// fallback order as WebcamGridSource (the MSYS2 OpenCV build sometimes
+/// cannot open DSHOW by index).
 pub fn probe_cameras() -> Vec<CameraInfo> {
     let mut found = Vec::new();
     for i in 0..=PROBE_MAX_INDEX {
@@ -85,8 +86,8 @@ fn camera_row(i: usize) -> Btn {
     Btn { x: 20, y: 104 + i as i32 * 42, w: W - 40, h: 34 }
 }
 
-// Alle Zeichen-Helfer arbeiten in logischen Koordinaten (W x H) und skalieren
-// intern auf die SS-fache Zeichenflaeche.
+// All drawing helpers work in logical coordinates (W x H) and scale to the
+// SS-times-larger canvas internally.
 
 fn fill_rect(img: &mut Mat, r: Btn, color: Scalar, thickness: i32) -> opencv::Result<()> {
     imgproc::rectangle_points(
@@ -223,13 +224,13 @@ fn render(
     draw_button(&mut img, BTN_DEMO, "Demo", Scalar::new(150.0, 90.0, 20.0, 0.0), has_cam, BTN_DEMO.hit(mx, my))?;
     draw_button(&mut img, BTN_CANCEL, "Abbrechen", Scalar::new(50.0, 50.0, 140.0, 0.0), true, BTN_CANCEL.hit(mx, my))?;
 
-    // Supersampling aufloesen: glatt auf Fenstergroesse herunterfiltern.
+    // Resolve the supersampling: filter down smoothly to window size.
     let mut out = Mat::default();
     imgproc::resize(&img, &mut out, Size::new(W, H), 0.0, 0.0, imgproc::INTER_AREA)?;
     Ok(out)
 }
 
-/// BGR-Mat -> u32-ARGB-Puffer fuer minifb (wie Overlay::blit).
+/// BGR Mat -> u32 ARGB buffer for minifb (same as Overlay::blit).
 fn blit(img: &Mat, buf: &mut Vec<u32>) -> opencv::Result<()> {
     let n = (img.cols() * img.rows()) as usize;
     if buf.len() != n {
@@ -245,8 +246,8 @@ fn blit(img: &Mat, buf: &mut Vec<u32>) -> opencv::Result<()> {
     Ok(())
 }
 
-/// Zeigt die Start-GUI. `preselect` ist der bevorzugte Kamera-Index (CLI).
-/// Rueckgabe: Some(config) bei "Real testen"/"Demo", None bei Abbruch.
+/// Shows the startup GUI. `preselect` is the preferred camera index (CLI).
+/// Returns Some(config) for "Real testen"/"Demo", None on cancel.
 pub fn run_launcher(preselect: i32) -> Result<Option<LaunchConfig>, String> {
     println!("Suche Kameras...");
     let mut cams = probe_cameras();
@@ -271,7 +272,7 @@ pub fn run_launcher(preselect: i32) -> Result<Option<LaunchConfig>, String> {
         if window.is_key_down(MKey::Escape) {
             return Ok(None);
         }
-        // Enter = sicherer Standard (Demo, keine echten Tasten)
+        // Enter = safe default (demo, no real keys)
         if window.is_key_down(MKey::Enter) && !cams.is_empty() {
             return Ok(Some(LaunchConfig { camera: cams[selected].index, send: false }));
         }
@@ -313,5 +314,5 @@ pub fn run_launcher(preselect: i32) -> Result<Option<LaunchConfig>, String> {
             .update_with_buffer(&buf, W as usize, H as usize)
             .map_err(|e| e.to_string())?;
     }
-    Ok(None) // Fenster geschlossen
+    Ok(None) // window was closed
 }

@@ -1,13 +1,13 @@
-"""Tastatur-Emulation: Dry-Run (nur Logging) und echte Windows-Tasten.
+"""Keyboard emulation: dry run (logging only) and real Windows keys.
 
-WinKeySender uebernimmt die ctypes-SendInput-Mechanik aus dem Kinect-Prototyp
-(prototyp/key_sender.py): Scancodes via KEYEVENTF_SCANCODE, weil Spiele
-(Unity/Unreal/DirectInput) auf Scancode-Ebene lesen.
+WinKeySender reuses the ctypes SendInput mechanics from the Kinect prototype
+(prototyp/key_sender.py): scancodes via KEYEVENTF_SCANCODE because games
+(Unity/Unreal/DirectInput) read at the scancode level.
 
-Gemeinsames Interface beider Sender:
-    tap(key)            kurzer Druck (druecken + kurz halten + loslassen)
-    hold(key, down)     down=True druecken/halten, down=False loslassen
-    release_all()       Not-Aus: alle aktuell gehaltenen Tasten loslassen
+Shared interface of both senders:
+    tap(key)            short press (press + hold briefly + release)
+    hold(key, down)     down=True press/hold, down=False release
+    release_all()       emergency stop: release all currently held keys
 """
 
 import ctypes
@@ -20,18 +20,17 @@ KEYEVENTF_KEYUP = 0x0002
 KEYEVENTF_SCANCODE = 0x0008
 MAPVK_VK_TO_VSC = 0
 
-# Virtuelle Keycodes der benoetigten Tasten
 VK = {
     "space": 0x20,
     "a": 0x41,
     "d": 0x44,
     "s": 0x53,
-    "ctrl": 0xA2,   # VK_LCONTROL (falls jemand Ducken zurueck auf Strg legt)
+    "ctrl": 0xA2,   # VK_LCONTROL (in case crouch gets mapped back to Ctrl)
 }
 
 
 class DryRunKeySender:
-    """Druckt nichts - schreibt die Aktionen nur in die Konsole."""
+    """Presses nothing - only writes the actions to the console."""
 
     def __init__(self):
         self._held = set()
@@ -63,7 +62,7 @@ class _KEYBDINPUT(ctypes.Structure):
 
 
 class _INPUTUNION(ctypes.Union):
-    # MOUSEINPUT ist das groesste Union-Mitglied (32 Bytes auf x64) - als Padding
+    # MOUSEINPUT is the largest union member (32 bytes on x64) - replicated as padding
     _fields_ = [("ki", _KEYBDINPUT), ("_padding", ctypes.c_ubyte * 32)]
 
 
@@ -72,7 +71,7 @@ class _INPUT(ctypes.Structure):
 
 
 class WinKeySender:
-    """Echte Tastendruecke ueber die Windows-API SendInput()."""
+    """Real key presses via the Windows API SendInput()."""
 
     def __init__(self):
         self._user32 = ctypes.windll.user32
@@ -90,7 +89,7 @@ class WinKeySender:
 
     def tap(self, key: str) -> None:
         self._send(key, keyup=False)
-        time.sleep(config.TAP_HOLD_MS / 1000.0)   # manche Engines verschlucken 0ms-Taps
+        time.sleep(config.TAP_HOLD_MS / 1000.0)   # some engines swallow 0 ms taps
         self._send(key, keyup=True)
 
     def hold(self, key: str, down: bool) -> None:
@@ -108,11 +107,11 @@ class WinKeySender:
 
 
 class SwitchableKeySender:
-    """Sender, der zur Laufzeit zwischen Dry-Run und echtem Senden umschaltet.
+    """Sender that switches between dry run and real sending at runtime.
 
-    So kann der Send-Modus im Overlay per Taste aktiviert werden, ohne das
-    Programm neu zu starten. Beim Ausschalten werden gehaltene ECHTE Tasten
-    sicher losgelassen (Not-Aus).
+    This lets the send mode be toggled via a key in the overlay without
+    restarting the program. On switching off, held REAL keys are safely
+    released (emergency stop).
     """
 
     def __init__(self, send_enabled: bool = False):
@@ -121,7 +120,7 @@ class SwitchableKeySender:
 
     def set_send(self, enabled: bool) -> None:
         if self.send_enabled and not enabled:
-            self._win.release_all()   # echte gehaltene Tasten loslassen
+            self._win.release_all()   # release real held keys
         self.send_enabled = enabled
         print(f"      >> SEND-Modus {'AN (echte Tasten!)' if enabled else 'AUS (Dry-Run)'}")
 

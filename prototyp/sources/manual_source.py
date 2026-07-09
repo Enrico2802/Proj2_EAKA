@@ -1,14 +1,13 @@
-"""Manuelle Quelle: simulierte Person per Konsolen-Tasten steuern.
+"""Manual source: drive the simulated person via console keys.
 
-Praktisch zum interaktiven Ausprobieren der Gestenerkennung ohne Kinect:
+Handy for trying out gesture detection interactively without a Kinect:
 
-    w = springen      s = ducken an/aus
-    a = Schritt links d = Schritt rechts
-    q = beenden
+    w = jump          s = toggle crouch
+    a = step left     d = step right
+    q = quit
 
-Hinweis: Die Tasten werden im KONSOLENFENSTER gelesen. Diesen Modus daher
-mit --dry-run verwenden (sonst landen die gesendeten Tasten ebenfalls in
-der Konsole, weil sie den Fokus hat).
+Note: the keys are read in the CONSOLE WINDOW. Use this mode with dry run
+(otherwise the sent keys also end up in the console because it has focus).
 """
 
 import math
@@ -31,7 +30,7 @@ class ManualSource:
         print("Steuerung: [w] springen  [s] ducken an/aus  [a]/[d] Schritt links/rechts  [q] beenden")
         x = 0.0
         crouching = False
-        jump_t = -1.0  # Zeitpunkt des Absprungs, -1 = nicht in der Luft
+        jump_t = -1.0  # takeoff time, -1 = not airborne
         t = 0.0
         while True:
             while msvcrt.kbhit():
@@ -49,7 +48,7 @@ class ManualSource:
 
             height = CROUCH_HEIGHT if crouching else STAND_HEIGHT
             if jump_t >= 0:
-                p = (t - jump_t) / 0.45  # Sprungdauer 0.45s
+                p = (t - jump_t) / 0.45  # jump duration 0.45 s
                 if p >= 1.0:
                     jump_t = -1.0
                 else:

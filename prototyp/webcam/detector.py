@@ -1,15 +1,15 @@
-"""Regelbasierte Gestenerkennung auf ZONEN-ANTEILEN (KONZEPT Abs. 6).
+"""Rule-based gesture detection on ZONE RATIOS (concept document, section 6).
 
-Arbeitet rein auf dem zones-Dict eines ZoneActivity (Anteile 0..1) und ist damit
-unabhaengig davon, woher die Daten kommen (Webcam / Mock / Manual). Liefert
-abstrakte Events - das Mapping Event -> Taste passiert in der Pipeline.
+Works purely on the zones dict of a ZoneActivity (ratios 0..1) and is
+therefore independent of where the data comes from (webcam / mock / manual).
+Emits abstract events - the mapping event -> key happens in the pipeline.
 
 Events:
-    "tap_left", "tap_right", "tap_up"   - kurze Tasten (steigende Flanke + Cooldown)
-    "hold_down_start", "hold_down_end"  - Halten an/aus (zustandsbasiert)
+    "tap_left", "tap_right", "tap_up"   - short key presses (rising edge + cooldown)
+    "hold_down_start", "hold_down_end"  - hold on/off (stateful)
 
-Beim Start kalibriert sich der Detektor: die ersten Frames werden je Zone
-gemittelt und als Baseline (Grundrauschen) abgezogen.
+On startup the detector calibrates itself: the first frames are averaged
+per zone and subtracted as baseline (background noise).
 """
 
 from zones import ZoneActivity, ZONE_NAMES
@@ -37,20 +37,20 @@ class GestureDetector:
         self.baseline = {z: 0.0 for z in ZONE_NAMES}
         self.calibrated = False
 
-        self._active = {z: False for z in ZONE_NAMES}     # Hysterese-Zustand je Zone
+        self._active = {z: False for z in ZONE_NAMES}     # hysteresis state per zone
         self._last_tap_t = {z: -1e9 for z in self.tap_zones}
 
     def start_recalibration(self) -> None:
-        """Hintergrund-/Ruhe-Baseline neu lernen (z.B. Taste 'c')."""
+        """Relearn the background/idle baseline (e.g. via the 'c' key)."""
         self.calibrated = False
         self._calib_buffer = []
 
     def _effective(self, s: ZoneActivity) -> dict:
-        """Anteil minus Baseline, nie negativ."""
+        """Ratio minus baseline, never negative."""
         return {z: max(0.0, s.zones.get(z, 0.0) - self.baseline[z]) for z in ZONE_NAMES}
 
     def update(self, s: ZoneActivity) -> list[str]:
-        """Verarbeitet einen Frame, liefert die in diesem Frame ausgeloesten Events."""
+        """Processes one frame and returns the events triggered in this frame."""
         if not self.calibrated:
             self._calib_buffer.append(dict(s.zones))
             if len(self._calib_buffer) >= self.calib_frames:
@@ -64,9 +64,9 @@ class GestureDetector:
         eff = self._effective(s)
         events: list[str] = []
 
-        # --- 1) neuen Hysterese-Zustand je Zone bestimmen + Flanken merken ---
-        rising = {z: False for z in ZONE_NAMES}    # inaktiv -> aktiv in DIESEM Frame
-        falling = {z: False for z in ZONE_NAMES}   # aktiv -> inaktiv in DIESEM Frame
+        # Update the hysteresis state per zone and record edges.
+        rising = {z: False for z in ZONE_NAMES}    # inactive -> active in THIS frame
+        falling = {z: False for z in ZONE_NAMES}   # active -> inactive in THIS frame
         for z in ZONE_NAMES:
             was = self._active[z]
             if not was and eff[z] > self.enter_ratio:
@@ -75,19 +75,19 @@ class GestureDetector:
             elif was and eff[z] < self.exit_ratio:
                 self._active[z] = False
                 falling[z] = True
-            # zwischen exit und enter: Zustand bleibt (Hysterese -> kein Flackern)
+            # between exit and enter: state persists (hysteresis -> no flicker)
 
-        # --- 2) Tap-Zonen: bei steigender Flanke EIN Tap, Konflikt: staerkste gewinnt ---
+        # Tap zones fire once per rising edge; the strongest zone wins conflicts.
         rising_taps = [z for z in self.tap_zones if rising[z]]
         if rising_taps:
             winner = max(rising_taps, key=lambda z: eff[z])
             if s.t - self._last_tap_t[winner] >= self.cooldown_s:
                 events.append("tap_" + winner)
                 self._last_tap_t[winner] = s.t
-            # Verlierer-Flanken werden bewusst verworfen: ihr Aktiv-Zustand bleibt
-            # gesetzt, damit sie nicht im Folgeframe nachfeuern.
+            # Loser edges are deliberately discarded: their active state stays
+            # set so they do not re-fire in the following frame.
 
-        # --- 3) Hold-Zonen: Start bei steigender, Ende bei fallender Flanke ---
+        # Hold zones start on rising edges and end on falling edges.
         for z in self.hold_zones:
             if rising[z]:
                 events.append("hold_" + z + "_start")

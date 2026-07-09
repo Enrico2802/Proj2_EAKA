@@ -1,14 +1,14 @@
-//! Bau-Beweis: belegt, dass die opencv-Crate baut, linkt UND zur Laufzeit
-//! eine Kamera oeffnen kann. Liest ein paar Frames und gibt die Bildgroesse aus.
+//! Build proof: verifies that the opencv crate builds, links AND can open a
+//! camera at runtime. Reads a few frames and prints the frame size.
 //!
-//! Ausfuehren:  cargo run --bin probe
+//! Run with:  cargo run --bin probe
 
 use opencv::{prelude::*, videoio, core};
 
 fn main() -> opencv::Result<()> {
     println!("OpenCV-Version: {}", core::CV_VERSION);
 
-    // Kamera 0 oeffnen (DSHOW-Backend wie im Python-Port)
+    // DSHOW backend, matching the main webcam source
     let mut cam = videoio::VideoCapture::new(0, videoio::CAP_DSHOW)?;
     if !videoio::VideoCapture::is_opened(&cam)? {
         eprintln!("Kamera 0 konnte nicht geoeffnet werden.");

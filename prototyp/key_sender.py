@@ -1,14 +1,14 @@
-"""Tastatur-Emulation über die Windows-API SendInput().
+"""Keyboard emulation via the Windows API SendInput().
 
-Damit verhält sich der Prototyp aus Sicht jedes Programms (Unity, Unreal,
-Notepad, Browser-Spiel ...) wie eine echte Tastatur. Es wird KEIN Treiber
-benötigt - SendInput injiziert die Events direkt in die Windows-Eingabequeue.
+From the point of view of any program (Unity, Unreal, Notepad, browser
+game ...) the prototype behaves like a real keyboard. NO driver is needed -
+SendInput injects the events directly into the Windows input queue.
 
-Wichtig für Spiele: Wir senden Scancodes (KEYEVENTF_SCANCODE), nicht nur
-virtuelle Keycodes, weil viele Engines (Unity/Unreal, DirectInput) auf
-Scancode-Ebene lesen.
+Important for games: we send scancodes (KEYEVENTF_SCANCODE), not just
+virtual keycodes, because many engines (Unity/Unreal, DirectInput) read at
+the scancode level.
 
-Im Dry-Run-Modus wird nichts gesendet, sondern nur geloggt.
+In dry-run mode nothing is sent, only logged.
 """
 
 import ctypes
@@ -19,12 +19,11 @@ KEYEVENTF_KEYUP = 0x0002
 KEYEVENTF_SCANCODE = 0x0008
 MAPVK_VK_TO_VSC = 0
 
-# Virtuelle Keycodes der Tasten, die wir brauchen
 VK = {
-    "space": 0x20,  # Springen
-    "ctrl": 0xA2,   # VK_LCONTROL - Ducken (gehalten)
-    "a": 0x41,      # Spur links
-    "d": 0x44,      # Spur rechts
+    "space": 0x20,  # jump
+    "ctrl": 0xA2,   # VK_LCONTROL - crouch (held)
+    "a": 0x41,      # lane left
+    "d": 0x44,      # lane right
 }
 
 
@@ -39,7 +38,7 @@ class _KEYBDINPUT(ctypes.Structure):
 
 
 class _INPUTUNION(ctypes.Union):
-    # MOUSEINPUT ist das größte Union-Mitglied (32 Bytes auf x64) - als Padding nachgebildet
+    # MOUSEINPUT is the largest union member (32 bytes on x64) - replicated as padding
     _fields_ = [("ki", _KEYBDINPUT), ("_padding", ctypes.c_ubyte * 32)]
 
 
@@ -73,8 +72,8 @@ class KeySender:
         self._send(key, keyup=True)
 
     def tap(self, key: str, hold_s: float = 0.04) -> None:
-        """Kurzer Tastendruck (drücken, kurz halten, loslassen)."""
+        """Short key press (press, hold briefly, release)."""
         self.press(key)
         if not self.dry_run:
-            time.sleep(hold_s)  # manche Engines verschlucken 0ms-Taps
+            time.sleep(hold_s)  # some engines swallow 0 ms taps
         self.release(key)

@@ -1,4 +1,4 @@
-"""Unit-Tests für die Gestenerkennung (python -m unittest)."""
+"""Unit tests for the gesture detection (python -m unittest)."""
 
 import unittest
 
@@ -16,7 +16,7 @@ class GestureDetectorTest(unittest.TestCase):
         self.t = 0.0
 
     def feed(self, x: float, height: float, frames: int = 1) -> list[str]:
-        """Schickt Frames durch den Detektor und sammelt alle Events."""
+        """Feeds frames through the detector and collects all events."""
         events = []
         for _ in range(frames):
             events += self.det.update(BodyState(x=x, height=height, t=self.t))
@@ -34,21 +34,21 @@ class GestureDetectorTest(unittest.TestCase):
 
     def test_sprung_feuert_genau_einmal(self):
         self.calibrate()
-        events = self.feed(0.0, STAND + 0.25, frames=8)   # in der Luft
-        events += self.feed(0.0, STAND, frames=5)          # gelandet
+        events = self.feed(0.0, STAND + 0.25, frames=8)   # airborne
+        events += self.feed(0.0, STAND, frames=5)          # landed
         self.assertEqual(events.count("jump"), 1)
 
     def test_sprung_cooldown_blockt_doppelausloesung(self):
         self.calibrate()
         events = self.feed(0.0, STAND + 0.25, frames=3)
-        events += self.feed(0.0, STAND, frames=2)          # landet sofort wieder
-        events += self.feed(0.0, STAND + 0.25, frames=3)   # zweiter "Sprung" innerhalb des Cooldowns
+        events += self.feed(0.0, STAND, frames=2)          # lands again immediately
+        events += self.feed(0.0, STAND + 0.25, frames=3)   # second "jump" within the cooldown
         self.assertEqual(events.count("jump"), 1)
 
     def test_zwei_spruenge_nach_cooldown(self):
         self.calibrate()
         events = self.feed(0.0, STAND + 0.25, frames=5)
-        events += self.feed(0.0, STAND, frames=20)         # > 0.5s Cooldown abwarten
+        events += self.feed(0.0, STAND, frames=20)         # wait out the > 0.5 s cooldown
         events += self.feed(0.0, STAND + 0.25, frames=5)
         self.assertEqual(events.count("jump"), 2)
 
@@ -69,7 +69,7 @@ class GestureDetectorTest(unittest.TestCase):
 
     def test_hysterese_kein_flackern_an_der_spurgrenze(self):
         self.calibrate()
-        # Knapp über der Eintritts-Schwelle, dann knapp darunter (aber über der Austritts-Schwelle):
+        # Just above the enter threshold, then just below it (but above the exit threshold):
         events = self.feed(-0.30, STAND, frames=3)
         events += self.feed(-0.20, STAND, frames=3)
         events += self.feed(-0.30, STAND, frames=3)

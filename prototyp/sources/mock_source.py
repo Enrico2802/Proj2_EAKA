@@ -1,11 +1,11 @@
-"""Simulierte Person vor der Kinect.
+"""Simulated person in front of the Kinect.
 
-Spielt ein festes "Drehbuch" ab: stehen (Kalibrierung), springen, Schritt
-nach links, zurück, ducken, Schritt nach rechts, zurück, springen.
-So lässt sich die komplette Pipeline ohne Hardware testen und vorführen.
+Plays back a fixed "script": stand (calibration), jump, step left, back,
+crouch, step right, back, jump. This allows testing and demonstrating the
+complete pipeline without hardware.
 
-Später wird diese Klasse durch eine Freenect2Source ersetzt, die dieselben
-BodyState-Frames aus echten Kinect-Depth-Daten berechnet.
+Later this class gets replaced by a Freenect2Source that computes the same
+BodyState frames from real Kinect depth data.
 """
 
 import math
@@ -17,21 +17,21 @@ from body_state import BodyState
 FPS = 30
 DT = 1.0 / FPS
 
-STAND_HEIGHT = 1.75   # m - Körpergröße der simulierten Person
-JUMP_PEAK = 0.30      # m - wie hoch der Schwerpunkt beim Sprung steigt
-CROUCH_HEIGHT = 1.30  # m - Körperhöhe in der Hocke
-SIDE_X = 0.55         # normierter x-Versatz einer Seitenspur
+STAND_HEIGHT = 1.75   # m - body height of the simulated person
+JUMP_PEAK = 0.30      # m - how far the centroid rises during a jump
+CROUCH_HEIGHT = 1.30  # m - body height while crouching
+SIDE_X = 0.55         # normalized x offset of a side lane
 
 
 class MockSource:
     def __init__(self, realtime: bool = True):
-        self.realtime = realtime  # False = so schnell wie möglich (für Tests)
+        self.realtime = realtime  # False = as fast as possible (for tests)
         self._t = 0.0
         self._x = 0.0
 
     def _frame(self, x: float, height: float) -> BodyState:
         s = BodyState(
-            x=x + random.uniform(-0.01, 0.01),          # Sensor-Rauschen
+            x=x + random.uniform(-0.01, 0.01),          # sensor noise
             height=height + random.uniform(-0.01, 0.01),
             t=self._t,
         )
@@ -48,7 +48,7 @@ class MockSource:
         n = int(duration * FPS)
         for i in range(n):
             p = i / (n - 1)
-            h = STAND_HEIGHT + JUMP_PEAK * math.sin(math.pi * p)  # Parabel rauf und runter
+            h = STAND_HEIGHT + JUMP_PEAK * math.sin(math.pi * p)  # arc up and down
             yield self._frame(self._x, h)
 
     def _step_to(self, target_x: float, duration: float = 0.4):

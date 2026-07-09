@@ -1,11 +1,11 @@
-"""Webcam-Bewegungssteuerung -> Tastatur. CLI-Einstieg.
+"""Webcam motion control -> keyboard. CLI entry point.
 
-Beispiele:
-    python main.py                          # Mock-Drehbuch, Dry-Run (keine Tasten)
-    python main.py --source manual          # w/a/s/d steuern, q=Ende
-    python main.py --source webcam          # echte Kamera, Dry-Run + Overlay
-    python main.py --source webcam --send   # echte Kamera + ECHTE Tasten
-    python -m unittest -v                   # Unit-Tests (ohne Kamera)
+Examples:
+    python main.py                          # scripted mock, dry run (no keys)
+    python main.py --source manual          # control via w/a/s/d, q = quit
+    python main.py --source webcam          # real camera, dry run + overlay
+    python main.py --source webcam --send   # real camera + REAL keys
+    python -m unittest -v                   # unit tests (without camera)
 """
 
 import argparse

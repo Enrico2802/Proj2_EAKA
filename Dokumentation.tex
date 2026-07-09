@@ -1,0 +1,289 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage{lmodern}
+\usepackage{geometry}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{graphicx}
+\usepackage[hidelinks]{hyperref}
+\usetikzlibrary{arrows.meta,backgrounds,calc}
+
+\geometry{margin=2.5cm}
+\setlength{\parskip}{0.7em}
+\setlength{\parindent}{0pt}
+\renewcommand{\arraystretch}{1.2}
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\tikzset{
+    participant/.style={
+        draw,
+        rounded corners=2pt,
+        fill=white,
+        minimum width=2.1cm,
+        minimum height=0.72cm,
+        align=center,
+        font=\scriptsize\sffamily
+    },
+    lifeline/.style={densely dashed, gray!70},
+    activation/.style={draw, fill=gray!18, minimum width=0.16cm},
+    call/.style={-{Latex[length=2.2mm]}, thick},
+    return/.style={-{Latex[length=2.2mm]}, dashed, gray!80},
+    selfcall/.style={-{Latex[length=2.2mm]}, thick},
+    msg/.style={font=\scriptsize\sffamily, fill=white, inner sep=1.2pt, align=center},
+    framebox/.style={draw=gray!55, rounded corners=2pt, fill opacity=0.15, text opacity=1},
+    framelabel/.style={font=\scriptsize\sffamily\bfseries, anchor=west}
+}
+
+\title{Dokumentation: Entwicklungsprozess des Gestensteuerungs-Moduls}
+\author{Proj2\_EAKA}
+\date{Stand: 09.07.2026}
+
+\begin{document}
+
+\maketitle
+
+\textbf{Projekt:} Proj2\_EAKA -- Körpersteuerung für ein Subway-Surfer-artiges Spiel\\
+\textbf{Finales Produkt:} \code{webcam-rust} (Version 1.1.1) -- Webcam-basierte Gestensteuerung mit Tastatur-Emulation\\
+\textbf{Zeitraum:} April -- Juli 2026
+
+\section{Überblick}
+
+Ziel des Moduls ist es, Körperbewegungen einer spielenden Person in Tastendrücke zu übersetzen (A / D / Leertaste / S). Das Spiel selbst muss dafür nicht angepasst werden -- aus seiner Sicht tippt einfach jemand auf der Tastatur. Wer vor der Kamera nach links greift, nach rechts greift, die Arme hebt oder sich duckt, steuert damit die Spielfigur.
+
+Der Weg zum fertigen Produkt führte über fünf Entwicklungsstufen:
+
+\begin{tabularx}{\textwidth}{@{}c Y Y l Y@{}}
+\toprule
+\# & Stufe & Modul & Sprache & Status \\
+\midrule
+0 & Projektplanung mit Kinect & \code{plan.md}, \code{planv2.md} & -- & Konzept \\
+1 & Erster Prototyp (Kinect-Ansatz) & \code{prototyp/} & Python & als Referenz erhalten \\
+2 & Kinect-Port ,,Kinect++`` & \code{kinect-input/} & C++ & entfernt (nur noch in der Projekthistorie) \\
+3 & Kinect-Port & \code{kinect-input-rust/} & Rust & entfernt (nur noch in der Projekthistorie) \\
+4 & \textbf{Kurswechsel:} Webcam-Prototyp & \code{prototyp/webcam/} & Python & als Referenz erhalten \\
+5 & \textbf{Finales Produkt} & \code{webcam-rust/} & Rust & aktiv, Version 1.1.1 \\
+\bottomrule
+\end{tabularx}
+
+Eine Grundidee zieht sich durch alle Stufen: die Verarbeitungskette \textbf{Quelle $\rightarrow$ Gestenerkennung $\rightarrow$ Tastensender}. Die \emph{Quelle} liefert Bewegungsdaten (zuerst gedacht: Kinect-Sensor, am Ende: Webcam), die \emph{Gestenerkennung} macht daraus Ereignisse wie ,,Sprung erkannt``, und der \emph{Tastensender} drückt die passende Taste. Weil diese drei Teile sauber getrennt sind, konnten Sensor und Programmiersprache mehrfach ausgetauscht werden, ohne jedes Mal bei null anzufangen. Außerdem ließ sich die Erkennungslogik in jeder Stufe automatisch testen -- ganz ohne angeschlossene Hardware.
+
+\section{Historie}
+
+\subsection{Phase 0 -- Projektplanung mit Kinect (Mai 2026)}
+
+Der ursprüngliche Plan sah eine \textbf{Kinect v2} als Sensor vor -- eine Tiefenkamera, die ursprünglich für die Xbox entwickelt wurde und Entfernungen im Raum messen kann. Zwei Planungsdokumente wogen die Möglichkeiten ab:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{\code{plan.md}:} Spiel in Unity, daneben ein eigenständiges Programm, das die Kinect ausliest und die erkannten Gesten über eine lokale Netzwerkverbindung an das Spiel meldet. Wichtige Erkenntnis aus der Recherche: Die freie Kinect-Bibliothek \code{libfreenect2} liefert nur Kamera- und Tiefenbilder, aber \textbf{keine fertige Skelett-Erkennung} -- die Gesten müssen also selbst aus den Rohdaten abgeleitet werden.
+    \item \textbf{\code{planv2.md}:} Alternativvariante mit der Unreal Engine, mit derselben Empfehlung: den Sensor als eigenständiges Zusatzprogramm bauen und das Spiel zunächst ganz normal per Tastatur entwickeln.
+\end{itemize}
+
+Beide Pläne legten die Zielgesten fest -- \textbf{Spurwechsel links/rechts, Springen, Ducken} -- und entschieden sich für eine einfache, regelbasierte Erkennung: Aus den Tiefendaten werden Körperposition und Körperhöhe geschätzt; verlässt einer der Werte einen Schwellbereich, gilt die Geste als erkannt. Auf Machine-Learning-Modelle wurde bewusst verzichtet.
+
+\subsection{Phase 1 -- Python-Prototyp mit Kinect-Ansatz (Juni 2026)}
+
+Der erste Prototyp (\code{prototyp/}) setzte die Verarbeitungskette in Python um -- zunächst absichtlich \textbf{ohne echte Hardware}:
+
+\begin{itemize}[leftmargin=*]
+    \item Als Datenformat diente ein einfacher ,,Körperzustand``: seitliche Position, Körperhöhe, Zeitpunkt. Genau das sollte die Kinect später liefern.
+    \item Die \textbf{Gestenerkennung} kalibriert sich beim Start selbst: Etwa eine Sekunde lang ruhig stehen, daraus wird die Normalhaltung ermittelt. Danach gilt: Höhe steigt deutlich $\rightarrow$ Sprung; Höhe sinkt anhaltend $\rightarrow$ Ducken (Taste wird gehalten); Position wandert zur Seite $\rightarrow$ Spurwechsel. Eingebaute Schutzmechanismen verhindern Fehlauslösungen: eine kurze Sperrzeit nach jedem Sprung und ein ,,Puffer`` zwischen Ein- und Ausschaltschwelle, damit Werte an der Grenze nicht hin- und herflackern.
+    \item Der \textbf{Tastensender} drückt die Tasten über die Windows-Systemschnittstelle so, dass auch Spiele sie erkennen, die Tastatureingaben auf niedriger Ebene abfragen. Sicherheitsnetz von Anfang an: Standardmäßig werden Tastendrücke nur angezeigt statt gesendet (,,Trockenlauf``), und beim Beenden werden gehaltene Tasten garantiert losgelassen.
+    \item Getestet wurde mit zwei Ersatzquellen: einer \textbf{Mock-Quelle} (spielt ein festes Bewegungs-Drehbuch mit künstlichem Messrauschen ab) und einer \textbf{manuellen Quelle} (Bewegungen werden per Konsolentaste simuliert). Acht automatische Tests sicherten das Verhalten ab.
+\end{itemize}
+
+Die Anbindung der echten Kinect blieb in dieser Phase bewusst offen -- und genau dort begannen die Probleme.
+
+\subsection{Phasen 2 und 3 -- Portierungen nach C++ und Rust (Juni 2026)}
+
+Der Python-Prototyp wurde anschließend zweimal originalgetreu portiert: zuerst nach \textbf{C++} (\code{kinect-input/}), dann als Experiment nach \textbf{Rust} (\code{kinect-input-rust/}). Beide Ports übernahmen Aufbau, Schwellwerte und alle acht Tests der Python-Referenz und ergänzten die für die jeweilige Sprache üblichen Sicherheitsmechanismen -- etwa die Garantie, dass eine gehaltene Taste selbst bei einem Programmabsturz wieder losgelassen wird. Der Rust-Port kam zudem komplett ohne Fremdbibliotheken aus.
+
+\textbf{Die Kinect-Hardware erwies sich in dieser Zeit als das zentrale Problem.} Der Sensor lief sehr instabil: Verbindungsabbrüche, Abhängigkeit vom konkreten USB-3-Controller des Rechners und eine schlechte Unterstützung unter Windows 11 machten es praktisch unmöglich, einen \textbf{verlässlichen, reproduzierbaren Entwicklungsstand} aufzubauen. Ob ein Fehler an der eigenen Software oder an der Hardware lag, war oft nicht unterscheidbar -- entsprechend waren die Ergebnisse der Kinect-Phasen teilweise schlicht nicht gut, ohne dass die Erkennungslogik selbst daran schuld war. Hinzu kam: \code{libfreenect2} ist stark auf C++ zugeschnitten; eine Anbindung aus Rust hätte zusätzliche Brückenschichten erfordert. Die eigentliche Verarbeitungskette funktionierte in allen drei Sprachen nachweislich (alle Tests grün) -- aber der Sensor davor blieb ein Unsicherheitsfaktor, der das ganze Projekt gefährdete.
+
+Beide Kinect-Ports wurden nach dem Kurswechsel aus dem Projekt entfernt; sie sind über die Versionsverwaltung weiterhin einsehbar.
+
+\subsection{Der Kurswechsel: von Kinect zu Webcam (Juni 2026)}
+
+Die Konsequenz aus den Hardware-Problemen war ein bewusster Schnitt, festgehalten in den Konzeptdokumenten \code{KONZEPT\_Webcam\_Steuerung.txt} und \code{KONZEPT\_Webcam\_Steuerung\_implementierung.txt}: \textbf{Die Kinect wird durch eine ganz normale Webcam ersetzt.} Eine Webcam ist überall verfügbar, läuft stabil und braucht keine Spezialtreiber.
+
+Da eine Webcam keine Tiefendaten liefert, wurde die Erkennung neu gedacht: Statt Körperhöhe in Metern wird \textbf{Bewegung im Bild} ausgewertet. Das Programm lernt beim Start, wie der ruhige Hintergrund aussieht, und erkennt danach nur noch das, was sich davor bewegt (sogenannte Hintergrundsubtraktion). Das Bild wird in ein grobes Raster und vier Auswertezonen eingeteilt -- links, rechts, oben, unten. Wie viel Bewegung in welcher Zone stattfindet, bestimmt die Geste. Auch hier: keine künstliche Intelligenz, nur nachvollziehbare Regeln.
+
+Die Gesten wurden dabei ans Kamerabild angepasst: Springen heißt jetzt \textbf{Arme hoch} (ein echter Sprung ist im flachen Kamerabild kaum messbar), Spurwechsel heißt \textbf{Arm zur Seite strecken}, Ducken bleibt Ducken. Ein willkommener Nebeneffekt des neuen Ansatzes: Das, was das Programm ,,sieht``, lässt sich direkt als Bild anzeigen -- daraus entstand der Anzeige-Bildschirm, der das System für Zuschauer und Nutzer nachvollziehbar macht.
+
+\subsection{Phase 4 -- Python-Webcam-Prototyp (Juni 2026)}
+
+Das Webcam-Konzept wurde zuerst wieder in Python erprobt (\code{prototyp/webcam/}): Kameraanbindung mit Hintergrundsubtraktion und Bewegungsraster, eine zonenbasierte Gestenerkennung mit denselben bewährten Schutzmechanismen (Selbstkalibrierung, Sperrzeit, Flacker-Puffer), ein zur Laufzeit ein- und ausschaltbarer Tastensender sowie das Overlay-Fenster mit Rasteranzeige und Sende-Status. Neun automatische Tests deckten die Erkennung ab -- ausdrücklich schon als Vorlage für die spätere Rust-Umsetzung geschrieben. Wichtigste Praxiserkenntnis: Die Kamera muss auf ein komprimiertes Bildformat eingestellt werden, sonst bricht die Bildrate drastisch ein; und die Hintergrundsubtraktion blendet Bewegung im Publikum hinter der spielenden Person zuverlässig aus.
+
+\section{Finales Produkt: \code{webcam-rust} (Version 1.1.1)}
+
+\subsection{Warum Rust -- und was das Produkt ausmacht}
+
+Die endgültige Fassung wurde in \textbf{Rust komplett neu entwickelt}. Der Python-Prototyp diente dabei nur als fachliche Vorlage für das Erkennungskonzept -- der Code selbst entstand von Grund auf neu, in einer kompilierten, schnellen Sprache mit strengen Sicherheitsgarantien, die sich als einzelnes Programm ohne Python-Installation weitergeben lässt. Die Neuentwicklung war zugleich die Gelegenheit, deutlich über den Prototyp hinauszugehen: Es kamen unter anderem das Startfenster mit Kameraauswahl, zonenspezifische Schwellwerte, der Bewegungsrichtungs-Filter und die automatische Neukalibrierung hinzu (Details in 3.4).
+
+Das Ergebnis ist gegenüber allen Kinect-Vorstufen nicht nur stabiler, sondern auch \textbf{für die Nutzer deutlich ersichtlicher}: Der Anzeige-Bildschirm zeigt live, was das System wahrnimmt -- das Kamerabild, die erkannte Bewegung, die vier Zonen, die zuletzt ausgelöste Taste und ob Tastendrücke gerade wirklich gesendet werden. Wer davorsteht, versteht ohne Erklärung, warum gerade eine Taste ausgelöst wurde (oder warum nicht). Bei der Kinect war das System dagegen eine Blackbox, deren Verhalten durch die instabile Hardware zusätzlich unberechenbar wirkte.
+
+\subsection{Die Bausteine}
+
+\begin{tabularx}{\textwidth}{@{}l Y@{}}
+\toprule
+Baustein & Aufgabe \\
+\midrule
+Launcher & Startfenster: findet angeschlossene Kameras, Auswahl \textbf{,,Real testen``} (Tasten werden gesendet), \textbf{,,Demo``} (nur Anzeige) oder \textbf{,,Abbrechen``} \\
+Webcam-Quelle & liest die Kamera aus, trennt Bewegung vom Hintergrund, berechnet die Bewegungsanteile je Zone \\
+Gestenerkennung & entscheidet anhand der Zonenwerte, ob eine Geste vorliegt -- mit Kalibrierung und Schutzmechanismen \\
+Tastensender & drückt die Tasten auf Systemebene; kennt einen Demo-Modus, in dem nur protokolliert wird \\
+Overlay & der Anzeige-Bildschirm (siehe oben), auf Wunsch auf einem zweiten Monitor \\
+Mock-/Manuell-Quelle & Ersatzquellen für Vorführungen und Entwicklung ohne Kamera \\
+Konfiguration & alle Schwellwerte und Zonen-Grenzen zentral an einer Stelle \\
+\bottomrule
+\end{tabularx}
+
+\subsection{Zonen und Tastenbelegung}
+
+Das Kamerabild ist in vier Zonen geteilt; die Bildmitte ist bewusst neutrale Ruhezone:
+
+\begin{tabularx}{\textwidth}{@{}l Y l Y@{}}
+\toprule
+Zone & Geste & Taste & Verhalten \\
+\midrule
+links & Arm nach links strecken & \textbf{A} & kurzer Tastendruck \\
+rechts & Arm nach rechts strecken & \textbf{D} & kurzer Tastendruck \\
+oben Mitte & Arme hochreißen & \textbf{Leertaste} (Sprung) & kurzer Tastendruck \\
+unteres Band & Ducken & \textbf{S} & Taste wird gehalten, solange geduckt \\
+\bottomrule
+\end{tabularx}
+
+\subsection{Was bei jedem Kamerabild passiert}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Bewegung erkennen:} Das aktuelle Bild wird mit dem gelernten Hintergrund verglichen; übrig bleibt nur die Silhouette der Bewegung. Schatten und Bildrauschen werden herausgefiltert.
+    \item \textbf{Vergröbern:} Die Silhouette wird auf ein Raster von 32 $\times$ 24 Feldern reduziert. Für jede der vier Zonen wird berechnet, wie viel Prozent ihrer Felder ,,in Bewegung`` sind.
+    \item \textbf{Plausibilität prüfen} (neu in Version 1.1.1):
+    \begin{itemize}[leftmargin=*]
+        \item Jede Zone hat \textbf{eigene, abgestimmte Schwellwerte} -- die Sprungzone reagiert z. B. empfindlicher als die Duckzone.
+        \item Ein \textbf{Bewegungsrichtungs-Filter} prüft, ob sich die Bewegung tatsächlich in die passende Richtung bewegt (nach links, nach rechts, nach oben). Zappeln ohne klare Richtung löst keine Taste mehr aus.
+        \item Eine \textbf{automatische Neukalibrierung} greift, wenn plötzlich fast das ganze Bild als ,,Bewegung`` gilt -- typisch bei Lichtwechsel oder einem Stoß gegen die Kamera. Das System lernt den Hintergrund dann neu, statt wild Tasten zu drücken.
+    \end{itemize}
+    \item \textbf{Geste entscheiden:} Überschreitet eine Zone ihre Schwelle über mehrere Bilder hinweg, gilt die Geste als erkannt. Melden sich mehrere Zonen gleichzeitig, gewinnt die mit der stärksten Bewegung; nach jedem Auslösen gilt eine halbe Sekunde Sperrzeit.
+    \item \textbf{Taste senden:} Die erkannte Geste wird in den zugehörigen Tastendruck übersetzt -- im Demo-Modus nur ins Protokoll geschrieben.
+    \item \textbf{Anzeigen:} Das Overlay stellt alles dar. Per Tastendruck lässt sich dort zwischen Kamerabild und Bewegungsansicht umschalten (\code{M}), neu kalibrieren (\code{C}), das Senden ein-/ausschalten (\code{K}) und beenden (\code{Q}/ESC).
+\end{enumerate}
+
+\subsection{Sicherheit und Qualitätssicherung}
+
+Gehaltene Tasten werden auf jedem Beendigungsweg garantiert losgelassen -- beim normalen Beenden, beim Ausschalten des Sendens und bei jeder Neukalibrierung. So bleibt nie eine ,,klemmende`` Taste im Spiel zurück. Die Erkennungslogik ist weiterhin komplett ohne Kamera testbar: 14 automatische Tests prüfen Kalibrierung, Einmal-Auslösung, Sperrzeit, Flacker-Schutz, die Konfliktauflösung zwischen Zonen und die neuen Plausibilitäts-Filter.
+
+\section{Sequenzdiagramm: Verarbeitungsablauf zur Laufzeit}
+
+Das Diagramm zeigt den Ablauf des finalen Produkts in vier farblich markierten Phasen: Start und Konfiguration, Initialisierung, die fortlaufende Verarbeitungsschleife und das Beenden. Durchgezogene Pfeile sind Aufrufe, gestrichelte Pfeile die zugehörigen Antworten; die schmalen Balken auf den Lebenslinien zeigen, welcher Baustein gerade aktiv arbeitet.
+
+\clearpage
+\begin{center}
+\scalebox{0.58}{%
+\begin{tikzpicture}[x=1cm,y=0.72cm]
+    \def\top{0}
+    \def\bottom{-28.5}
+    \coordinate (N)  at (0,\top);
+    \coordinate (M)  at (2.6,\top);
+    \coordinate (L)  at (5.2,\top);
+    \coordinate (W)  at (7.8,\top);
+    \coordinate (D)  at (10.4,\top);
+    \coordinate (K)  at (13.0,\top);
+    \coordinate (O)  at (15.6,\top);
+    \coordinate (OS) at (18.2,\top);
+
+    \begin{scope}[on background layer]
+        \draw[framebox, fill=blue!45] (-1.25,-1.05) rectangle (19.45,-5.55);
+        \node[framelabel, text=blue!40!black] at (-1.05,-1.35) {Phase 1 -- Start und Konfiguration};
+        \draw[framebox, fill=green!45] (1.35,-5.95) rectangle (16.75,-9.65);
+        \node[framelabel, text=green!35!black] at (1.55,-6.25) {Phase 2 -- Initialisierung};
+        \draw[framebox, fill=orange!55] (-1.25,-10.05) rectangle (19.45,-24.95);
+        \node[framelabel, text=orange!45!black] at (-1.05,-10.35) {Phase 3 -- Verarbeitungsschleife (ca. 30 Bilder pro Sekunde)};
+        \draw[framebox, fill=red!45] (1.35,-25.35) rectangle (19.45,-28.25);
+        \node[framelabel, text=red!45!black] at (1.55,-25.65) {Phase 4 -- Beenden};
+    \end{scope}
+
+    \node[participant] (nbox)  at (N)  {Nutzer};
+    \node[participant] (mbox)  at (M)  {Haupt-\\programm};
+    \node[participant] (lbox)  at (L)  {Launcher};
+    \node[participant] (wbox)  at (W)  {Webcam-\\Quelle};
+    \node[participant] (dbox)  at (D)  {Gesten-\\erkennung};
+    \node[participant] (kbox)  at (K)  {Tasten-\\sender};
+    \node[participant] (obox)  at (O)  {Overlay};
+    \node[participant] (osbox) at (OS) {Windows /\\Spiel};
+
+    \foreach \x in {0,2.6,5.2,7.8,10.4,13.0,15.6,18.2} {
+        \draw[lifeline] (\x,-0.42) -- (\x,\bottom);
+    }
+
+    \draw[activation] ($(M)+(0.08,-1.30)$) rectangle ($(M)+(-0.08,-28.05)$);
+    \draw[activation] ($(L)+(0.08,-2.40)$) rectangle ($(L)+(-0.08,-5.10)$);
+    \draw[activation] ($(W)+(0.08,-6.60)$) rectangle ($(W)+(-0.08,-8.00)$);
+    \draw[activation] ($(O)+(0.08,-8.60)$) rectangle ($(O)+(-0.08,-24.30)$);
+
+    \draw[call] ($(N)+(0,-1.55)$) -- node[msg, above] {Programm starten} ($(M)+(0,-1.55)$);
+    \draw[call] ($(M)+(0,-2.50)$) -- node[msg, above] {Startfenster öffnen} ($(L)+(0,-2.50)$);
+    \draw[selfcall] ($(L)+(0,-3.25)$) -- ++(0.75,0) -- node[msg, right] {Kameras suchen} ++(0,-0.65) -- ++(-0.75,0);
+    \draw[call] ($(N)+(0,-4.30)$) -- node[msg, above, text width=2.6cm] {Kamera wählen\\Real testen / Demo} ($(L)+(0,-4.30)$);
+    \draw[return] ($(L)+(0,-5.05)$) -- node[msg, above] {Auswahl} ($(M)+(0,-5.05)$);
+
+    \draw[call] ($(M)+(0,-6.70)$) -- node[msg, above, text width=2.8cm] {Kamera öffnen\\Hintergrundmodell anlegen} ($(W)+(0,-6.70)$);
+    \draw[return] ($(W)+(0,-7.50)$) -- node[msg, above] {bereit} ($(M)+(0,-7.50)$);
+    \draw[call] ($(M)+(0,-8.15)$) -- node[msg, above, text width=2.7cm] {Selbstkalibrierung starten} ($(D)+(0,-8.15)$);
+    \draw[call] ($(M)+(0,-8.85)$) -- node[msg, above] {vorbereiten} ($(K)+(0,-8.85)$);
+    \draw[call] ($(M)+(0,-9.45)$) -- node[msg, above] {Anzeige öffnen} ($(O)+(0,-9.45)$);
+
+    \draw[rounded corners=3pt, draw=orange!60!black, thick] (1.55,-10.95) rectangle (18.95,-24.50);
+    \node[msg, anchor=west, text=orange!45!black] at (1.75,-11.25) {\textbf{loop} pro Kamerabild};
+
+    \draw[activation] ($(W)+(0.08,-11.75)$) rectangle ($(W)+(-0.08,-14.30)$);
+    \draw[call] ($(M)+(0,-11.85)$) -- node[msg, above] {nächstes Bild anfordern} ($(W)+(0,-11.85)$);
+    \draw[selfcall] ($(W)+(0,-12.55)$) -- ++(0.80,0) -- node[msg, right, text width=2.4cm] {Bewegung vom Hintergrund trennen} ++(0,-0.60) -- ++(-0.80,0);
+    \draw[selfcall] ($(W)+(0,-13.55)$) -- ++(0.80,0) -- node[msg, right, text width=2.5cm] {Zonenanteile, Richtung, Szenenwechsel} ++(0,-0.60) -- ++(-0.80,0);
+    \draw[return] ($(W)+(0,-14.35)$) -- node[msg, above] {Zonenwerte} ($(M)+(0,-14.35)$);
+
+    \draw[rounded corners=2pt, draw=gray!65] (1.75,-15.05) rectangle (13.85,-19.95);
+    \node[msg, anchor=west] at (1.95,-15.35) {\textbf{alt} Szenenwechsel / normales Bild};
+    \draw[densely dashed, gray!65] (1.75,-16.95) -- (13.85,-16.95);
+    \draw[call] ($(M)+(0,-16.05)$) -- node[msg, above] {Neukalibrierung starten} ($(D)+(0,-16.05)$);
+    \draw[call] ($(M)+(0,-16.65)$) -- node[msg, above] {alle Tasten loslassen} ($(K)+(0,-16.65)$);
+
+    \draw[activation] ($(D)+(0.08,-17.55)$) rectangle ($(D)+(-0.08,-19.10)$);
+    \draw[call] ($(M)+(0,-17.55)$) -- node[msg, above] {Zonenwerte auswerten} ($(D)+(0,-17.55)$);
+    \draw[selfcall] ($(D)+(0,-18.25)$) -- ++(0.80,0) -- node[msg, right, text width=2.7cm] {Schwellwerte, Flacker-Schutz, Sperrzeit prüfen} ++(0,-0.60) -- ++(-0.80,0);
+    \draw[return] ($(D)+(0,-19.15)$) -- node[msg, above] {erkannte Gesten} ($(M)+(0,-19.15)$);
+
+    \draw[rounded corners=2pt, draw=gray!65] (1.75,-20.25) rectangle (18.95,-21.95);
+    \node[msg, anchor=west] at (1.95,-20.55) {\textbf{opt} Geste erkannt};
+    \draw[activation] ($(K)+(0.08,-20.95)$) rectangle ($(K)+(-0.08,-21.60)$);
+    \draw[call] ($(M)+(0,-20.95)$) -- node[msg, above] {Taste auslösen} ($(K)+(0,-20.95)$);
+    \draw[call] ($(K)+(0,-21.55)$) -- node[msg, above, text width=2.5cm] {Tastendruck senden\\wenn Senden AN} ($(OS)+(0,-21.55)$);
+
+    \draw[call] ($(M)+(0,-22.55)$) -- node[msg, above] {Bild und Status anzeigen} ($(O)+(0,-22.55)$);
+    \draw[return] ($(N)+(0,-23.15)$) -- node[msg, above] {Taste C / K / Q} ($(O)+(0,-23.15)$);
+    \draw[return] ($(O)+(0,-23.75)$) -- node[msg, above] {Aktion zurückmelden} ($(M)+(0,-23.75)$);
+
+    \draw[rounded corners=2pt, draw=gray!65] (1.75,-24.05) rectangle (13.85,-24.75);
+    \node[msg, anchor=west] at (1.95,-24.40) {\textbf{alt} C: neu kalibrieren \quad | \quad K: Senden umschalten \quad | \quad Q/ESC: Schleife beenden};
+
+    \draw[call] ($(M)+(0,-26.35)$) -- node[msg, above] {alle Tasten loslassen} ($(K)+(0,-26.35)$);
+    \draw[call] ($(K)+(0,-27.05)$) -- node[msg, above] {gehaltene Tasten freigeben} ($(OS)+(0,-27.05)$);
+    \draw[return] ($(M)+(0,-27.80)$) -- node[msg, above] {Programmende} ($(N)+(0,-27.80)$);
+
+\end{tikzpicture}
+}
+\end{center}
+
+\vfill
+\emph{Stand: 09.07.2026 -- erstellt aus dem aktuellen Projektstand (Version 1.1.1) und der Projekthistorie; die entfernten Kinect-Module wurden aus der Versionsverwaltung rekonstruiert.}
+
+\end{document}
